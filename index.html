@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINE 點餐＋外帶自取系統</title>
+
+  <!-- LINE LIFF SDK -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <!-- Bootstrap for rapid UI MVP -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .store-header {
+      background-color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border-radius: 0 0 15px 15px;
+      z-index: 1040;
+    }
+
+    .nav-pills .nav-link {
+      color: #6c757d;
+      border-radius: 30px;
+      padding: 0.5rem 1rem;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+
+    .nav-pills .nav-link.active,
+    .nav-pills .show>.nav-link {
+      background-color: #00B900;
+      /* LINE Green Strategy */
+      color: white;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #dee2e6;
+      border-radius: 4px;
+    }
+
+    .product-card {
+      border: none;
+      border-radius: 12px;
+      background: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.03);
+      margin-bottom: 1rem;
+      display: flex;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+
+    .product-card:active {
+      transform: scale(0.98);
+    }
+
+    .product-img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      background-color: #e9ecef;
+    }
+
+    .product-info {
+      padding: 10px 15px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .product-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .product-desc {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 5px;
+    }
+
+    .product-price {
+      font-weight: bold;
+      color: #e63946;
+    }
+
+    .cart-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 60px;
+      background-color: #00B900;
+      color: white;
+      z-index: 1050;
+      border-radius: 15px 15px 0 0;
+      transform: translateY(100%);
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .cart-bar.active {
+      transform: translateY(0);
+    }
+
+    .badge {
+      font-size: 0.85rem;
+    }
+
+    .btn-primary {
+      background-color: #00B900;
+      border-color: #00B900;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+      background-color: #009900;
+      border-color: #009900;
+    }
+
+    .qty-btn {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      background: #f1f3f5;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="app" class="container" style="max-width: 600px; padding-bottom: 80px;">
+    <!-- Views will be injected here -->
+    <div id="loadingView" class="text-center mt-5">
+      <div class="spinner-border text-primary text-center" role="status"></div>
+      <p class="mt-2 text-muted fw-bold">系統載入中...</p>
+    </div>
+
+    <div id="mainView" class="d-none">
+      <!-- Store Info -->
+      <div class="store-header p-3 text-center bg-light border-bottom sticky-top">
+        <h3 id="storeName">門市名稱</h3>
+        <p class="text-secondary small mb-0" id="storeStatus">營業中</p>
+      </div>
+
+      <!-- Categories Tabs -->
+      <ul class="nav nav-pills mt-3 mb-3 custom-scrollbar flex-nowrap overflow-auto" id="categoryTabs">
+      </ul>
+
+      <!-- Product List -->
+      <div class="product-list" id="productList">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Floating Cart Button -->
+  <div id="cartBar" class="cart-bar shadow">
+    <div class="d-flex justify-content-between align-items-center h-100 px-3">
+      <div class="cart-info">
+        <span class="badge bg-danger rounded-pill" id="cartCount">0</span>
+        <span class="ms-2 fw-semibold text-white">購物車總計: $<span id="cartTotal">0</span></span>
+      </div>
+      <button class="btn btn-light" onclick="showCartModal()">查看購物車</button>
+    </div>
+  </div>
+
+  <!-- Cart Modal -->
+  <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">購物車</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="cartItemsList">
+          <!-- Cart items will go here -->
+        </div>
+        <div class="modal-footer d-flex flex-column">
+          <!-- Pickup Slot Selection -->
+          <div class="w-100 mb-3">
+            <label class="form-label fw-bold">選擇取餐時段</label>
+            <select class="form-select" id="pickupSlotSelect">
+              <option value="">請選擇時段</option>
+            </select>
+          </div>
+          <!-- Notes -->
+          <div class="w-100 mb-3">
+            <label class="form-label fw-bold">備註</label>
+            <input type="text" class="form-control" id="orderNote" placeholder="有什麼特殊需求嗎？">
+          </div>
+
+          <button type="button" class="btn btn-primary w-100 fw-bold" onclick="submitOrderProcess()">
+            結帳 $<span id="modalCartTotal">0</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Options Modal -->
+  <div class="modal fade" id="optionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="optionsModalTitle">選擇規格</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="optionsModalBody">
+          <!-- Options will go here -->
+        </div>
+        <div class="modal-footer d-flex justify-content-between align-items-center">
+          <div class="fw-bold">總價: $<span id="optionsModalPrice">0</span></div>
+          <button type="button" class="btn btn-primary fw-bold" onclick="confirmOptionsAndAddToCart()">加入購物車</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Scripts -->
+  <script>
+    // Configuration
+    const LIFF_ID = "2009603120-N1VSac24";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzG5aSsxvduJRoww4ZZ9XNFpMEVRL93ThZNJXLQld3koAJCYqp5pecSuHARVxl13O0fSQ/exec";
+
+    let state = {
+      user: null,
+      store: {},
+      categories: [],
+      products: [],
+      options: [],
+      slots: [],
+      cart: []
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await initSystem();
+    });
+
+    async function initSystem() {
+      try {
+        // 1. Initializing LIFF
+        if (typeof liff !== "undefined") {
+          try {
+            await liff.init({ liffId: LIFF_ID });
+            if (liff.isLoggedIn()) {
+              const profile = await liff.getProfile();
+              state.user = {
+                line_user_id: profile.userId,
+                display_name: profile.displayName,
+              };
+              // Async notify member API on login inside GAS
+              fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                  action: 'member',
+                  payload: {
+                    line_user_id: profile.userId,
+                    display_name: profile.displayName
+                  }
+                })
+              }).catch(console.error);
+            } else {
+              // Wait! If not logged in and we are in LINE browser, auto login
+              // If outside, allow anon browsing or enforce login
+              // liff.login();
+            }
+          } catch (e) {
+            console.warn("LIFF init error or blocked by browser", e);
+          }
+        }
+
+        if (!state.user) {
+          // Fallback / Guest login state
+          state.user = { line_user_id: "guest_" + new Date().getTime(), display_name: "顧客" };
+        }
+
+        // 2. Fetch Catalog and Store slots mapping
+        await loadInitialData();
+
+        // 3. Render View
+        document.getElementById('loadingView').classList.add('d-none');
+        document.getElementById('mainView').classList.remove('d-none');
+      } catch (err) {
+        console.error(err);
+        alert("系統載入失敗：" + err.message);
+      }
+    }
+
+    async function loadInitialData() {
+      // If deployed via GAS directly, google is defined
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        await new Promise((resolve, reject) => {
+          google.script.run.withSuccessHandler(res => {
+            try {
+              let rs = JSON.parse(res);
+              if (rs.success) {
+                state.store = rs.store || {};
+                state.categories = rs.categories || [];
+                state.products = rs.products || [];
+                state.options = rs.product_options || [];
+              } else {
+                reject(new Error(rs.message || "讀取資料失敗 (API Error)"));
+                return;
+              }
+              resolve();
+            } catch (e) {
+              reject(new Error("解析資料發生錯誤: " + e.message));
+            }
+          }).withFailureHandler(reject).apiHandler(JSON.stringify({ action: 'catalog' }));
+        });
+
+        await new Promise((resolve, reject) => {
+          google.script.run.withSuccessHandler(res => {
+            try {
+              let rs = JSON.parse(res);
+              if (rs.success) {
+                state.slots = rs.slots || [];
+              } else {
+                reject(new Error(rs.message || "讀取門市資訊失敗 (API Error)"));
+                return;
+              }
+              resolve();
+            } catch (e) {
+              reject(new Error("解析門市資料發生錯誤: " + e.message));
+            }
+          }).withFailureHandler(reject).apiHandler(JSON.stringify({ action: 'store_info' }));
+        });
+      } else {
+        // Standalone Fetch Mode (e.g. Github Pages)
+        console.warn("Using external Fetch REST API.");
+        try {
+          // Fetch catalog
+          let resCat = await fetch(`${API_URL}?action=catalog`);
+          let rsCat = await resCat.json();
+          if (rsCat.success) {
+            state.store = rsCat.store || {};
+            state.categories = rsCat.categories || [];
+            state.products = rsCat.products || [];
+            state.options = rsCat.product_options || [];
+          } else {
+            throw new Error("API catalog error: " + rsCat.message);
+          }
+
+          // Fetch Store info slots
+          let resStore = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'store_info' })
+          });
+          let rsStore = await resStore.json();
+          if (rsStore.success) {
+            state.slots = rsStore.slots || [];
+          } else {
+            throw new Error("API store_info error: " + rsStore.message);
+          }
+        } catch (e) {
+          throw new Error("讀取伺服器資料失敗: " + e.message);
+        }
+      }
+
+      renderView();
+    }
+
+    function renderView() {
+      if (!state.store.store_name && state.categories.length === 0) {
+        document.getElementById('storeName').innerText = "尚未設定門市名稱";
+        document.getElementById('productList').innerHTML = `
+               <div class="text-center mt-5 p-3">
+                 <h5 class="text-danger fw-bold">系統尚未建立資料</h5>
+                 <p class="text-muted small">這表示您的 Google 試算表目前是空的。<br>請前往試算表補上以下設定：</p>
+                 <ul class="text-start text-muted small" style="display:inline-block; text-align:left;">
+                    <li><b>[stores]表單</b>: 至少填寫一筆門市名稱與營業狀態</li>
+                    <li><b>[categories]表單</b>: 填寫分類 (且 is_active 請填大寫 TRUE)</li>
+                    <li><b>[products]表單</b>: 填寫商品 (且 is_active 請填大寫 TRUE)</li>
+                 </ul>
+                 <p class="text-muted small mt-2">填寫完成後重整本頁即可！</p>
+               </div>
+            `;
+        return;
+      }
+
+      const catHtml = state.categories.map((c, i) => `
+          <li class="nav-item">
+            <a class="nav-link ${i === 0 ? 'active' : ''}" data-bs-toggle="pill" href="#cat_${c.category_id}" onclick="renderProducts('${c.category_id}')">
+              ${c.category_name}
+            </a>
+          </li>
+        `).join('');
+      document.getElementById('categoryTabs').innerHTML = catHtml;
+
+      if (state.store.store_name) {
+        document.getElementById('storeName').innerText = state.store.store_name;
+        const isOpen = state.store.is_open === true || state.store.is_open === 1 || String(state.store.is_open).toUpperCase() === "TRUE";
+        document.getElementById('storeStatus').innerText = isOpen ? '營業中' : '目前休息中';
+      }
+
+      const slotSelectHtml = '<option value="">請選擇時段</option>' + state.slots.map(s => `
+          <option value="${s.slot_id}">${s.pickup_date} ${s.pickup_time}</option>
+        `).join('');
+      document.getElementById('pickupSlotSelect').innerHTML = slotSelectHtml;
+
+      if (state.categories.length > 0) {
+        renderProducts(state.categories[0].category_id);
+      }
+    }
+
+    function renderProducts(catId) {
+      const products = state.products.filter(p => String(p.category_id) === String(catId));
+
+      if (products.length === 0) {
+        document.getElementById('productList').innerHTML = '<p class="text-center text-muted w-100 mt-5">此分類下尚無商品，請至試算表 products 分頁新增。</p>';
+        return;
+      }
+
+      const html = products.map(p => {
+        const isSoldOut = p.is_sold_out === true || p.is_sold_out === 1 || String(p.is_sold_out).toUpperCase() === "TRUE";
+        return `<div class="product-card">
+              <img src="${p.image_url || 'https://via.placeholder.com/100'}" alt="${p.product_name}" class="product-img">
+              <div class="product-info">
+                <div>
+                  <div class="product-title">${p.product_name}</div>
+                  <div class="product-desc">${p.description || ''}</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <span class="product-price">$${p.price}</span>
+                  ${isSoldOut ?
+            `<span class="badge bg-secondary">售完</span>` :
+            `<button class="btn btn-sm btn-outline-primary" onclick="addToCart('${p.product_id}')">+ 加點</button>`
+          }
+                </div>
+              </div>
+            </div>`;
+      }).join('');
+
+      document.getElementById('productList').innerHTML = html;
+    }
+
+    let currentOptionProductId = null;
+    let currentOptionBasePrice = 0;
+
+    function addToCart(productId) {
+      const p = state.products.find(x => String(x.product_id) === String(productId));
+      if (!p) return;
+
+      const productOptions = state.options.filter(o => String(o.product_id) === String(productId));
+
+      if (productOptions.length > 0) {
+        showOptionsModal(p, productOptions);
+      } else {
+        pushToCart(p.product_id, p.product_name, '', parseFloat(p.price), 1);
+      }
+    }
+
+    function showOptionsModal(product, options) {
+      currentOptionProductId = product.product_id;
+      currentOptionBasePrice = parseFloat(product.price) || 0;
+
+      document.getElementById('optionsModalTitle').innerText = product.product_name;
+      document.getElementById('optionsModalPrice').innerText = currentOptionBasePrice;
+
+      const groups = {};
+      options.forEach(o => {
+        if (!groups[o.option_group]) groups[o.option_group] = [];
+        groups[o.option_group].push(o);
+      });
+
+      let html = '';
+      Object.keys(groups).forEach(groupName => {
+        const isRequired = groups[groupName][0].is_required === true || groups[groupName][0].is_required === 1 || String(groups[groupName][0].is_required).toUpperCase() === "TRUE";
+        const maxSelect = parseInt(groups[groupName][0].max_select) || 1;
+        const inputType = maxSelect === 1 ? 'radio' : 'checkbox';
+
+        html += `<div class="mb-4 option-group-container" data-group="${groupName}" data-required="${isRequired}" data-max="${maxSelect}">
+             <label class="fw-bold mb-2">${groupName} ${isRequired ? '<span class="text-danger">*</span>' : ''} ${maxSelect > 1 ? '<span class="text-muted small">(可選 ' + maxSelect + ' 項)</span>' : ''}</label>
+          `;
+
+        groups[groupName].forEach((o, index) => {
+          const priceLabel = parseFloat(o.price_delta) > 0 ? `(+$${o.price_delta})` : '';
+          // Pre-select the first radio if required
+          const isChecked = (isRequired && index === 0 && maxSelect === 1) ? 'checked' : '';
+
+          html += `<div class="form-check mb-2">
+                  <input class="form-check-input option-input" type="${inputType}" name="opt_${groupName}" id="opt_${o.option_id}" value="${o.option_name}" data-price="${o.price_delta || 0}" onclick="calcOptionPrice()" ${isChecked}>
+                  <label class="form-check-label w-100" for="opt_${o.option_id}">
+                    ${o.option_name} <span class="text-secondary small ms-1">${priceLabel}</span>
+                  </label>
+                </div>`;
+        });
+        html += `</div>`;
+      });
+
+      document.getElementById('optionsModalBody').innerHTML = html;
+      calcOptionPrice();
+      try { new bootstrap.Modal(document.getElementById('optionsModal')).show(); } catch (e) { }
+    }
+
+    function calcOptionPrice() {
+      let total = currentOptionBasePrice;
+      document.querySelectorAll('#optionsModalBody input.option-input:checked').forEach(el => {
+        total += parseFloat(el.getAttribute('data-price') || 0);
+      });
+      document.getElementById('optionsModalPrice').innerText = total;
+    }
+
+    function confirmOptionsAndAddToCart() {
+      let valid = true;
+      let selectedOpts = [];
+      let additionalPrice = 0;
+
+      document.querySelectorAll('.option-group-container').forEach(groupDiv => {
+        const isReq = groupDiv.getAttribute('data-required') === 'true';
+        const groupName = groupDiv.getAttribute('data-group');
+        const maxSelect = parseInt(groupDiv.getAttribute('data-max') || 1);
+        const checked = groupDiv.querySelectorAll('input:checked');
+
+        if (isReq && checked.length === 0) {
+          alert(`請選擇「${groupName}」`);
+          valid = false;
+          return;
+        }
+        if (checked.length > maxSelect) {
+          alert(`「${groupName}」最多只能選 ${maxSelect} 項`);
+          valid = false;
+          return;
+        }
+
+        checked.forEach(chk => {
+          selectedOpts.push(chk.value);
+          additionalPrice += parseFloat(chk.getAttribute('data-price') || 0);
+        });
+      });
+
+      if (!valid) return;
+
+      const p = state.products.find(x => String(x.product_id) === String(currentOptionProductId));
+      const finalPrice = currentOptionBasePrice + additionalPrice;
+      const optText = selectedOpts.join(', ');
+
+      pushToCart(p.product_id, p.product_name, optText, finalPrice, 1);
+
+      try { bootstrap.Modal.getInstance(document.getElementById('optionsModal')).hide(); } catch (e) { }
+    }
+
+    function pushToCart(id, name, optText, unitPrice, qty) {
+      const existing = state.cart.find(x => String(x.product_id) === String(id) && x.option_text === optText);
+      if (existing) {
+        existing.qty += qty;
+        existing.item_total = existing.unit_price * existing.qty;
+      } else {
+        state.cart.push({
+          product_id: id,
+          product_name: name,
+          option_text: optText,
+          unit_price: unitPrice,
+          qty: qty,
+          item_total: unitPrice * qty
+        });
+      }
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const cartBar = document.getElementById('cartBar');
+      let totalQty = 0;
+      let totalPrice = 0;
+
+      state.cart.forEach(item => {
+        totalQty += item.qty;
+        totalPrice += item.item_total;
+      });
+
+      document.getElementById('cartCount').innerText = totalQty;
+      document.getElementById('cartTotal').innerText = totalPrice;
+      document.getElementById('modalCartTotal').innerText = totalPrice;
+
+      if (totalQty > 0) {
+        cartBar.classList.add('active');
+      } else {
+        cartBar.classList.remove('active');
+      }
+      renderCartModal();
+    }
+
+    function renderCartModal() {
+      const html = state.cart.map((item, index) => {
+        return `<div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <div class="fw-bold">${item.product_name}</div>
+                ${item.option_text ? `<div class="text-secondary small mb-1 bg-light rounded px-1">${item.option_text}</div>` : ''}
+                <div class="text-muted small">$${item.unit_price} / 份</div>
+              </div>
+              <div class="d-flex align-items-center">
+                <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+                <span class="mx-2 fw-bold" style="min-width: 20px; text-align:center;">${item.qty}</span>
+                <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+              </div>
+            </div>`;
+      }).join('');
+
+      if (state.cart.length === 0) {
+        document.getElementById('cartItemsList').innerHTML = '<p class="text-center text-muted mt-3">購物車目前是空的</p>';
+      } else {
+        document.getElementById('cartItemsList').innerHTML = html;
+      }
+    }
+
+    function updateQty(index, delta) {
+      state.cart[index].qty += delta;
+
+      if (state.cart[index].qty <= 0) {
+        state.cart.splice(index, 1);
+      } else {
+        state.cart[index].item_total = state.cart[index].qty * state.cart[index].unit_price;
+      }
+
+      updateCartUI();
+    }
+
+    function showCartModal() {
+      const modal = new bootstrap.Modal(document.getElementById('cartModal'));
+      modal.show();
+    }
+
+    async function submitOrderProcess() {
+      if (state.cart.length === 0) {
+        alert("購物車是空的"); return;
+      }
+
+      const slotId = document.getElementById('pickupSlotSelect').value;
+      const note = document.getElementById('orderNote').value;
+
+      if (!slotId) {
+        alert("請選擇取餐時段！"); return;
+      }
+
+      // Call API
+      const payload = {
+        action: 'order',
+        payload: {
+          line_user_id: state.user.line_user_id,
+          items: state.cart,
+          pickup_slot_id: slotId,
+          customer_note: note,
+          payment_method: 'cash' // MVP
+        }
+      };
+
+      try {
+        document.querySelector('#cartModal .modal-footer button').disabled = true;
+        document.querySelector('#cartModal .modal-footer button').innerText = '處理中...';
+
+        if (typeof google !== 'undefined' && google.script) {
+          await new Promise((resolve, reject) => {
+            google.script.run.withSuccessHandler(res => {
+              let r = JSON.parse(res);
+              if (r.success) {
+                alert(`訂單建立成功！單號：${r.order_no}`);
+                state.cart = [];
+                updateCartUI();
+                try { bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide(); } catch (e) { }
+                resolve();
+              } else {
+                reject(new Error(r.message));
+              }
+            }).withFailureHandler(reject).apiHandler(JSON.stringify(payload));
+          });
+        } else {
+          let submitRes = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          let rs = await submitRes.json();
+          if (rs.success) {
+            alert(`訂單建立成功！單號：${rs.order_no}`);
+            state.cart = [];
+            updateCartUI();
+            try { bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide(); } catch (e) { }
+          } else {
+            throw new Error(rs.message);
+          }
+        }
+      } catch (err) {
+        alert("訂單送出失敗：" + err.message);
+      } finally {
+        const saveBtn = document.querySelector('#cartModal .modal-footer button');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerText = `結帳 $${document.getElementById('modalCartTotal').innerText}`;
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>

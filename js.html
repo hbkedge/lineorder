@@ -1,0 +1,303 @@
+<script>
+    // Mock data for local testing outside of GAS / LIFF where LIFF not init
+    const LIFF_ID = "2009603120-N1VSac24";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzG5aSsxvduJRoww4ZZ9XNFpMEVRL93ThZNJXLQld3koAJCYqp5pecSuHARVxl13O0fSQ/exec"; // Dynamic Endpoint in GAS
+
+    let state = {
+        user: null,
+        store: {},
+        categories: [],
+        products: [],
+        options: [],
+        slots: [],
+        cart: []
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await initSystem();
+    });
+
+    async function initSystem() {
+        try {
+            // 1. Initializing LIFF
+            // If not in development mode / GAS mode, assume LIFF
+            if (typeof liff !== "undefined") {
+                /* uncomment when LIFF is configured
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                  liff.login();
+                  return;
+                }
+                const profile = await liff.getProfile();
+                state.user = {
+                  line_user_id: profile.userId,
+                  display_name: profile.displayName,
+                };
+                
+                // Sync member info over API
+                await apiCall('member', {
+                  line_user_id: profile.userId,
+                  display_name: profile.displayName
+                });
+                */
+            }
+
+            // Fallback for development (Mock User)
+            state.user = { line_user_id: "test1234", display_name: "Developer" };
+
+            // 2. Fetch Catalog and Store slots mapping
+            await loadInitialData();
+
+            // 3. Render View
+            document.getElementById('loadingView').classList.add('d-none');
+            document.getElementById('mainView').classList.remove('d-none');
+        } catch (err) {
+            console.error(err);
+            alert("系統載入失敗：" + err.message);
+        }
+    }
+
+    async function loadInitialData() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(res => {
+                    try {
+                        let rs = JSON.parse(res);
+                        if (rs.success) {
+                            state.store = rs.store || {};
+                            state.categories = rs.categories || [];
+                            state.products = rs.products || [];
+                            state.options = rs.product_options || [];
+                        } else {
+                            console.error("Catalog API returned false success:", rs);
+                            reject(new Error(rs.message || "讀取資料失敗 (API Error)"));
+                            return;
+                        }
+                        resolve();
+                    } catch (e) {
+                        reject(new Error("解析資料發生錯誤: " + e.message + "\n伺服器回應: " + res));
+                    }
+                }).withFailureHandler(reject).apiHandler(JSON.stringify({ action: 'catalog' }));
+            });
+
+            await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(res => {
+                    try {
+                        let rs = JSON.parse(res);
+                        if (rs.success) {
+                            state.slots = rs.slots || [];
+                        } else {
+                            console.error("Store API returned false success:", rs);
+                            reject(new Error(rs.message || "讀取門市資訊失敗 (API Error)"));
+                            return;
+                        }
+                        resolve();
+                    } catch (e) {
+                        reject(new Error("解析門市資料發生錯誤: " + e.message + "\n伺服器回應: " + res));
+                    }
+                }).withFailureHandler(reject).apiHandler(JSON.stringify({ action: 'store_info' }));
+            });
+        } else {
+            console.warn("Not in GAS Environment. Using empty data mock");
+        }
+
+        renderView();
+    }
+
+    function renderView() {
+        // Render Categories
+        const catHtml = state.categories.map((c, i) => `
+    <li class="nav-item">
+      <a class="nav-link ${i === 0 ? 'active' : ''}" data-bs-toggle="pill" href="#cat_${c.category_id}" onclick="renderProducts('${c.category_id}')">
+        ${c.category_name}
+      </a>
+    </li>
+  `).join('');
+        document.getElementById('categoryTabs').innerHTML = catHtml;
+
+        // Render Store Status
+        if (state.store.store_name) {
+            document.getElementById('storeName').innerText = state.store.store_name;
+            document.getElementById('storeStatus').innerText = state.store.is_open ? '營業中' : '目前休息中';
+        }
+
+        // Render Slots Select
+        const slotSelectHtml = '<option value="">請選擇時段</option>' + state.slots.map(s => `
+    <option value="${s.slot_id}">${s.pickup_date} ${s.pickup_time}</option>
+  `).join('');
+        document.getElementById('pickupSlotSelect').innerHTML = slotSelectHtml;
+
+        // Render initial product category
+        if (state.categories.length > 0) {
+            renderProducts(state.categories[0].category_id);
+        }
+    }
+
+    function renderProducts(catId) {
+        const products = state.products.filter(p => p.category_id === catId);
+        const html = products.map(p => {
+            return `<div class="product-card">
+      <img src="${p.image_url || 'https://via.placeholder.com/100'}" alt="${p.product_name}" class="product-img">
+      <div class="product-info">
+        <div>
+          <div class="product-title">${p.product_name}</div>
+          <div class="product-desc">${p.description || ''}</div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <span class="product-price">$${p.price}</span>
+          ${p.is_sold_out ?
+                    `<span class="badge bg-secondary">售完</span>` :
+                    `<button class="btn btn-sm btn-outline-primary" onclick="addToCart('${p.product_id}')">+ 加點</button>`
+                }
+        </div>
+      </div>
+    </div>`;
+        }).join('');
+
+        document.getElementById('productList').innerHTML = html;
+    }
+
+    function addToCart(productId) {
+        const p = state.products.find(x => x.product_id === productId);
+        if (!p) return;
+
+        const existing = state.cart.find(x => x.product_id === productId);
+        if (existing) {
+            existing.qty++;
+            existing.item_total = existing.unit_price * existing.qty;
+        } else {
+            state.cart.push({
+                product_id: p.product_id,
+                product_name: p.product_name,
+                option_text: '', // default MVP without complex option UI
+                unit_price: p.price,
+                qty: 1,
+                item_total: p.price
+            });
+        }
+        updateCartUI();
+    }
+
+    function updateCartUI() {
+        const cartBar = document.getElementById('cartBar');
+        let totalQty = 0;
+        let totalPrice = 0;
+
+        state.cart.forEach(item => {
+            totalQty += item.qty;
+            totalPrice += item.item_total;
+        });
+
+        document.getElementById('cartCount').innerText = totalQty;
+        document.getElementById('cartTotal').innerText = totalPrice;
+        document.getElementById('modalCartTotal').innerText = totalPrice;
+
+        if (totalQty > 0) {
+            cartBar.classList.add('active');
+        } else {
+            cartBar.classList.remove('active');
+        }
+
+        renderCartModal();
+    }
+
+    function renderCartModal() {
+        const html = state.cart.map((item, index) => {
+            return `<div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <div class="fw-bold">${item.product_name}</div>
+        <div class="text-muted small">$${item.unit_price} / 份</div>
+      </div>
+      <div class="d-flex align-items-center">
+        <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+        <span class="mx-2 fw-bold" style="min-width: 20px; text-align:center;">${item.qty}</span>
+        <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+      </div>
+    </div>`;
+        }).join('');
+
+        if (state.cart.length === 0) {
+            document.getElementById('cartItemsList').innerHTML = '<p class="text-center text-muted mt-3">購物車目前是空的</p>';
+        } else {
+            document.getElementById('cartItemsList').innerHTML = html;
+        }
+    }
+
+    function updateQty(index, delta) {
+        state.cart[index].qty += delta;
+
+        if (state.cart[index].qty <= 0) {
+            state.cart.splice(index, 1);
+        } else {
+            state.cart[index].item_total = state.cart[index].qty * state.cart[index].unit_price;
+        }
+
+        updateCartUI();
+    }
+
+    function showCartModal() {
+        const modal = new bootstrap.Modal(document.getElementById('cartModal'));
+        modal.show();
+    }
+
+    async function submitOrderProcess() {
+        if (state.cart.length === 0) {
+            alert("購物車是空的"); return;
+        }
+
+        const slotId = document.getElementById('pickupSlotSelect').value;
+        const note = document.getElementById('orderNote').value;
+
+        if (!slotId) {
+            alert("請選擇取餐時段！"); return;
+        }
+
+        // Call API
+        const payload = {
+            action: 'order',
+            payload: {
+                line_user_id: state.user.line_user_id,
+                items: state.cart,
+                pickup_slot_id: slotId,
+                customer_note: note,
+                payment_method: 'cash' // MVP
+            }
+        };
+
+        try {
+            if (typeof google !== 'undefined' && google.script) {
+                document.querySelector('#cartModal .modal-footer button').disabled = true;
+                document.querySelector('#cartModal .modal-footer button').innerText = '處理中...';
+
+                await new Promise((resolve, reject) => {
+                    google.script.run.withSuccessHandler(res => {
+                        let r = JSON.parse(res);
+                        if (r.success) {
+                            alert(`訂單建立成功！單號：${r.order_no}`);
+                            state.cart = [];
+                            updateCartUI();
+                            try { bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide(); } catch (e) { }
+                            resolve();
+                        } else {
+                            reject(new Error(r.message));
+                        }
+                    }).withFailureHandler(reject).apiHandler(JSON.stringify(payload));
+                });
+
+            } else {
+                alert("非 GAS 環境。本機測試：訂單送出成功。");
+                state.cart = [];
+                updateCartUI();
+                try { bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide(); } catch (e) { }
+            }
+        } catch (err) {
+            alert("訂單送出失敗：" + err.message);
+        } finally {
+            const saveBtn = document.querySelector('#cartModal .modal-footer button');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerText = `結帳 $${document.getElementById('modalCartTotal').innerText}`;
+            }
+        }
+    }
+</script>
