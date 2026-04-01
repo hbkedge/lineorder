@@ -666,7 +666,7 @@
 
       try {
         document.querySelector('#cartModal .modal-footer button').disabled = true;
-        document.querySelector('#cartModal .modal-footer button').innerText = '處理中...';
+        document.querySelector('#cartModal .modal-footer button').innerHTML = '處理中...<span id="modalCartTotal" class="d-none"></span>';
 
         if (typeof google !== 'undefined' && google.script) {
           await new Promise((resolve, reject) => {
@@ -675,6 +675,8 @@
               if (r.success) {
                 alert(`訂單建立成功！單號：${r.order_no}`);
                 state.cart = [];
+                // Before running updateCartUI, restore innerHTML to prevent missing span
+                document.querySelector('#cartModal .modal-footer button').innerHTML = '結帳 $<span id="modalCartTotal">0</span>';
                 updateCartUI();
                 try { bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide(); } catch (e) { }
                 resolve();
@@ -692,6 +694,7 @@
           if (rs.success) {
             alert(`訂單建立成功！單號：${rs.order_no}`);
             state.cart = [];
+            document.querySelector('#cartModal .modal-footer button').innerHTML = '結帳 $<span id="modalCartTotal">0</span>';
             updateCartUI();
             try { bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide(); } catch (e) { }
           } else {
@@ -704,7 +707,13 @@
         const saveBtn = document.querySelector('#cartModal .modal-footer button');
         if (saveBtn) {
           saveBtn.disabled = false;
-          saveBtn.innerText = `結帳 $${document.getElementById('modalCartTotal').innerText}`;
+          // Only rewrite if it's missing to avoid messing it up when error happened
+          if (!document.getElementById('modalCartTotal')) {
+            saveBtn.innerHTML = '結帳 $<span id="modalCartTotal">0</span>';
+          }
+          let displayTotal = document.getElementById('cartTotal') ? document.getElementById('cartTotal').innerText : 0;
+          document.getElementById('modalCartTotal').innerText = displayTotal;
+          saveBtn.innerHTML = `結帳 $<span id="modalCartTotal">${displayTotal}</span>`;
         }
       }
     }
