@@ -24,6 +24,7 @@
             overflow-x: auto;
             padding: 1rem;
             gap: 1rem;
+            min-height: 0;
         }
 
         .kanban-column {
@@ -130,61 +131,249 @@
             display: flex;
             gap: 8px;
         }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
     </style>
 </head>
 
 <body>
 
     <nav class="navbar navbar-dark bg-dark px-3">
-        <a class="navbar-brand fw-bold" href="#">LINE外帶接單 - 後台看板</a>
+        <a class="navbar-brand fw-bold" href="#">LINE外帶接單 - 後台管理</a>
         <div class="d-flex align-items-center">
             <span class="text-white me-3 d-none d-md-inline" id="lastUpdated">最後更新: 尚未更新</span>
-            <button class="btn btn-sm btn-success fw-bold" onclick="fetchOrders()">重新整理進單</button>
+            <button class="btn btn-sm btn-success fw-bold" onclick="refreshData()">重新整理</button>
         </div>
     </nav>
 
-    <div class="kanban-board">
-        <!-- Pending Column -->
-        <div class="kanban-column pending">
-            <div class="column-header">
-                <span>新進訂單 (待接單)</span>
-                <span class="badge bg-danger rounded-pill" id="countPending">0</span>
-            </div>
-            <div class="column-body" id="colPending">
-                <div class="text-center mt-4 text-muted small spinner-border d-none">讀取中...</div>
+    <!-- Nav Tabs -->
+    <ul class="nav nav-tabs px-3 pt-2 bg-white" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders"
+                type="button" role="tab" onclick="currentTab='orders'">📌 接單看板</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="menu-tab" data-bs-toggle="tab" data-bs-target="#menu" type="button"
+                role="tab" onclick="currentTab='menu'; fetchCatalog()">🍔 菜單商品管理</button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content main-content" id="adminTabContent">
+
+        <!-- === 接單看板 Tab === -->
+        <div class="tab-pane fade show active h-100" id="orders" role="tabpanel">
+            <div class="kanban-board">
+                <!-- Pending Column -->
+                <div class="kanban-column pending">
+                    <div class="column-header">
+                        <span>新進訂單 (待接單)</span>
+                        <span class="badge bg-danger rounded-pill" id="countPending">0</span>
+                    </div>
+                    <div class="column-body" id="colPending">
+                        <div class="text-center mt-4 text-muted small spinner-border d-none">讀取中...</div>
+                    </div>
+                </div>
+
+                <!-- Accepted Column -->
+                <div class="kanban-column accepted">
+                    <div class="column-header">
+                        <span>製作中</span>
+                        <span class="badge bg-primary rounded-pill" id="countAccepted">0</span>
+                    </div>
+                    <div class="column-body" id="colAccepted"></div>
+                </div>
+
+                <!-- Ready Column -->
+                <div class="kanban-column ready">
+                    <div class="column-header">
+                        <span>待顧客取餐 / 可叫號</span>
+                        <span class="badge bg-success rounded-pill" id="countReady">0</span>
+                    </div>
+                    <div class="column-body" id="colReady"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Accepted Column -->
-        <div class="kanban-column accepted">
-            <div class="column-header">
-                <span>製作中</span>
-                <span class="badge bg-primary rounded-pill" id="countAccepted">0</span>
+        <!-- === 菜單管理 Tab === -->
+        <div class="tab-pane fade h-100 overflow-auto" id="menu" role="tabpanel">
+            <div class="container-fluid p-4">
+                <div class="row">
+                    <!-- 分類管理 -->
+                    <div class="col-md-3 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold">商品分類</h5>
+                                <button class="btn btn-sm btn-outline-primary" onclick="openCatModal()">+ 新增</button>
+                            </div>
+                            <div class="list-group list-group-flush" id="catListUI">
+                                <div class="p-3 text-center text-muted">讀取中...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 商品列表 -->
+                    <div class="col-md-9 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold">商品明細維護</h5>
+                                <button class="btn btn-sm btn-primary" onclick="openProdModal()">+ 新增商品</button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>圖片</th>
+                                            <th>商品名稱</th>
+                                            <th>分類</th>
+                                            <th>價格</th>
+                                            <th>狀態指引</th>
+                                            <th class="text-end">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="prodListUI">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted p-4">讀取中...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="column-body" id="colAccepted"></div>
         </div>
 
-        <!-- Ready Column -->
-        <div class="kanban-column ready">
-            <div class="column-header">
-                <span>待顧客取餐 / 可叫號</span>
-                <span class="badge bg-success rounded-pill" id="countReady">0</span>
+    </div>
+
+    <!-- === Modals === -->
+
+    <!-- Category Modal -->
+    <div class="modal fade" id="catModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">編輯分類</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="cat_id">
+                    <div class="mb-3">
+                        <label class="form-label">分類名稱</label>
+                        <input type="text" id="cat_name" class="form-control" placeholder="例如：純茶類" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">排序權重 (越小越前面)</label>
+                        <input type="number" id="cat_sort" class="form-control" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">狀態</label>
+                        <select id="cat_active" class="form-select">
+                            <option value="true">顯示上架</option>
+                            <option value="false">隱藏下架</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCategory()" id="btnSaveCat">儲存變更</button>
+                </div>
             </div>
-            <div class="column-body" id="colReady"></div>
         </div>
     </div>
 
+    <!-- Product Modal -->
+    <div class="modal fade" id="prodModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">編輯商品</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="prod_id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">商品名稱</label>
+                            <input type="text" id="prod_name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">所屬分類</label>
+                            <select id="prod_cat" class="form-select"></select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">價格</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" id="prod_price" class="form-control" value="0">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">商品圖片位址 (URL)</label>
+                            <input type="text" id="prod_img" class="form-control" placeholder="https://...">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">商品文字描述</label>
+                        <textarea id="prod_desc" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="prod_active">
+                                <label class="form-check-label fw-bold" for="prod_active">商品上架開放點餐</label>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="prod_soldout">
+                                <label class="form-check-label fw-bold text-danger" for="prod_soldout">設定為缺貨 (Sold
+                                    out)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveProduct()" id="btnSaveProd">儲存商品</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script>
         // Configuration - MUST MATCH YOUR BACKEND CONFIG
         const API_URL = "https://script.google.com/macros/s/AKfycbzG5aSsxvduJRoww4ZZ9XNFpMEVRL93ThZNJXLQld3koAJCYqp5pecSuHARVxl13O0fSQ/exec";
 
+        let currentTab = 'orders';
         let ordersCache = [];
+        let catalogCache = { categories: [], products: [] };
+
+        let catModalInstance = null;
+        let prodModalInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchOrders();
-            // Auto refresh every 30 seconds
-            setInterval(fetchOrders, 30000);
+            setInterval(() => { if (currentTab === 'orders') fetchOrders() }, 30000);
+
+            catModalInstance = new bootstrap.Modal(document.getElementById('catModal'));
+            prodModalInstance = new bootstrap.Modal(document.getElementById('prodModal'));
         });
+
+        function refreshData() {
+            if (currentTab === 'orders') fetchOrders();
+            else fetchCatalog();
+        }
+
+        // ==================== 訂單看板邏輯 ====================
 
         async function fetchOrders() {
             document.getElementById('lastUpdated').innerText = "最後更新: 更新中...";
@@ -251,46 +440,232 @@
           <div class="mb-2 text-muted" style="font-size:0.8rem;">
             顧客: ${o.line_user_id.substring(0, 6)}... | 總額: $${o.total_amount}
           </div>
-          
-          <div class="items-list">
-             ${itemsHtml}
-          </div>
-          
+          <div class="items-list">${itemsHtml}</div>
           ${noteHtml}
-          
-          <div class="action-btns">
-            ${actions}
-          </div>
-        </div>
-        `;
+          <div class="action-btns">${actions}</div>
+        </div>`;
         }
 
         async function updateOrderStatus(orderId, newStatus) {
             if (newStatus === 'canceled' && !confirm("確定要取消/拒絕這筆訂單嗎？會發送通知給顧客！")) return;
-
-            const originalStatus = ordersCache.find(o => o.order_id === orderId).order_status;
-
             try {
                 // Optimistic Update
                 let target = ordersCache.find(o => o.order_id === orderId);
-                if (target) {
-                    target.order_status = newStatus;
-                    renderKanban();
-                }
+                if (target) { target.order_status = newStatus; renderKanban(); }
 
                 let res = await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify({ action: 'update_order', payload: { order_id: orderId, status: newStatus } })
                 });
                 let rs = await res.json();
-
                 if (!rs.success) throw new Error(rs.message);
-
-                // Re-sync fully to be safe but the UI is optimistically updated already
             } catch (e) {
                 alert("狀態更新失敗：" + e.message);
-                // Revert state by fetching from source
                 fetchOrders();
+            }
+        }
+
+        // ==================== 菜單商品管理邏輯 ====================
+
+        async function fetchCatalog() {
+            document.getElementById('catListUI').innerHTML = '<div class="p-3 text-center text-muted">讀取中...</div>';
+            document.getElementById('prodListUI').innerHTML = '<tr><td colspan="6" class="text-center text-muted p-4">讀取中...</td></tr>';
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_get_catalog' })
+                });
+                let rs = await res.json();
+                if (rs.success) {
+                    catalogCache.categories = rs.categories || [];
+                    catalogCache.products = rs.products || [];
+                    renderCatalog();
+                    const now = new Date();
+                    document.getElementById('lastUpdated').innerText = `最後更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                } else {
+                    alert("菜單讀取失敗：" + rs.message);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function renderCatalog() {
+            // Render Categories
+            const categories = catalogCache.categories.filter(c => c.status !== 'deleted').sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            const catHtml = categories.map(c => {
+                const isActive = String(c.is_active) === 'true' || c.is_active === 1 || c.is_active === true;
+                return `
+                <div class="list-group-item d-flex justify-content-between align-items-center ${isActive ? '' : 'bg-light text-muted'}">
+                    <div>
+                        <span class="fw-semibold">${c.category_name}</span>
+                        ${isActive ? '' : '<span class="badge bg-secondary ms-1">下架</span>'}
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-link text-decoration-none" onclick="editCat('${c.category_id}')">編輯</button>
+                        <button class="btn btn-sm btn-link text-danger text-decoration-none" onclick="deleteItem('category', '${c.category_id}')">刪除</button>
+                    </div>
+                </div>
+            `}).join('');
+            document.getElementById('catListUI').innerHTML = catHtml || '<div class="p-3 text-center text-muted small">尚未建立分類</div>';
+
+            // Populate Product Modal Category Dropdown
+            document.getElementById('prod_cat').innerHTML = categories.map(c => `<option value="${c.category_id}">${c.category_name}</option>`).join('');
+
+            // Render Products
+            const products = catalogCache.products.filter(p => p.status !== 'deleted');
+            const prodHtml = products.map(p => {
+                const catName = (categories.find(c => c.category_id === p.category_id) || {}).category_name || '未分類';
+                const isActive = String(p.is_active) === 'true' || p.is_active === 1 || p.is_active === true;
+                const isSoldOut = String(p.is_sold_out) === 'true' || p.is_sold_out === 1 || p.is_sold_out === true;
+
+                return `
+                <tr class="${isActive ? '' : 'table-light text-muted'}">
+                    <td>
+                        <img src="${p.image_url || 'https://via.placeholder.com/50'}" width="48" height="48" style="object-fit:cover; border-radius:8px" onerror="this.src='https://via.placeholder.com/50'">
+                    </td>
+                    <td>
+                        <div class="fw-bold">${p.product_name}</div>
+                        <div class="small ${isActive ? 'text-muted' : ''}">${p.description || ''}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">${catName}</span></td>
+                    <td class="fw-bold text-success">$${p.price}</td>
+                    <td>
+                        ${isActive ? '<span class="badge bg-primary">上架</span>' : '<span class="badge bg-secondary">下架</span>'}
+                        ${isSoldOut ? '<span class="badge bg-danger">缺貨</span>' : ''}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editProd('${p.product_id}')">編輯</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('product', '${p.product_id}')">刪除</button>
+                    </td>
+                </tr>
+            `}).join('');
+            document.getElementById('prodListUI').innerHTML = prodHtml || '<tr><td colspan="6" class="text-center text-muted p-4">尚未建立商品</td></tr>';
+        }
+
+        // --- Model Actions ---
+
+        function openCatModal() {
+            document.getElementById('cat_id').value = '';
+            document.getElementById('cat_name').value = '';
+            document.getElementById('cat_sort').value = '0';
+            document.getElementById('cat_active').value = 'true';
+            catModalInstance.show();
+        }
+
+        function editCat(id) {
+            const c = catalogCache.categories.find(x => x.category_id === id);
+            if (!c) return;
+            document.getElementById('cat_id').value = c.category_id;
+            document.getElementById('cat_name').value = c.category_name;
+            document.getElementById('cat_sort').value = c.sort_order || 0;
+            const isActive = String(c.is_active) === 'true' || c.is_active === 1 || c.is_active === true;
+            document.getElementById('cat_active').value = isActive ? 'true' : 'false';
+            catModalInstance.show();
+        }
+
+        async function saveCategory() {
+            const btn = document.getElementById('btnSaveCat');
+            btn.disabled = true; btn.innerText = '儲存中...';
+
+            const payload = {
+                category_id: document.getElementById('cat_id').value,
+                category_name: document.getElementById('cat_name').value,
+                sort_order: parseInt(document.getElementById('cat_sort').value) || 0,
+                is_active: document.getElementById('cat_active').value === 'true'
+            };
+
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_save_category', payload })
+                });
+                let rs = await res.json();
+                if (rs.success) {
+                    catModalInstance.hide();
+                    fetchCatalog();
+                } else alert("分類儲存失敗: " + rs.message);
+            } catch (e) {
+                alert("錯誤: " + e.message);
+            } finally {
+                btn.disabled = false; btn.innerText = '儲存變更';
+            }
+        }
+
+        function openProdModal() {
+            document.getElementById('prod_id').value = '';
+            document.getElementById('prod_name').value = '';
+            document.getElementById('prod_price').value = '0';
+            document.getElementById('prod_desc').value = '';
+            document.getElementById('prod_img').value = '';
+            document.getElementById('prod_active').checked = true;
+            document.getElementById('prod_soldout').checked = false;
+            if (document.getElementById('prod_cat').options.length > 0) {
+                document.getElementById('prod_cat').selectedIndex = 0;
+            }
+            prodModalInstance.show();
+        }
+
+        function editProd(id) {
+            const p = catalogCache.products.find(x => x.product_id === id);
+            if (!p) return;
+            document.getElementById('prod_id').value = p.product_id;
+            document.getElementById('prod_name').value = p.product_name;
+            document.getElementById('prod_cat').value = p.category_id;
+            document.getElementById('prod_price').value = p.price;
+            document.getElementById('prod_desc').value = p.description || '';
+            document.getElementById('prod_img').value = p.image_url || '';
+            document.getElementById('prod_active').checked = String(p.is_active) === 'true' || p.is_active === 1 || p.is_active === true;
+            document.getElementById('prod_soldout').checked = String(p.is_sold_out) === 'true' || p.is_sold_out === 1 || p.is_sold_out === true;
+            prodModalInstance.show();
+        }
+
+        async function saveProduct() {
+            const btn = document.getElementById('btnSaveProd');
+            btn.disabled = true; btn.innerText = '儲存中...';
+
+            const payload = {
+                product_id: document.getElementById('prod_id').value,
+                category_id: document.getElementById('prod_cat').value,
+                product_name: document.getElementById('prod_name').value,
+                description: document.getElementById('prod_desc').value,
+                price: parseInt(document.getElementById('prod_price').value) || 0,
+                image_url: document.getElementById('prod_img').value,
+                is_active: document.getElementById('prod_active').checked,
+                is_sold_out: document.getElementById('prod_soldout').checked
+            };
+
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_save_product', payload })
+                });
+                let rs = await res.json();
+                if (rs.success) {
+                    prodModalInstance.hide();
+                    fetchCatalog();
+                } else alert("商品儲存失敗: " + rs.message);
+            } catch (e) {
+                alert("錯誤: " + e.message);
+            } finally {
+                btn.disabled = false; btn.innerText = '儲存商品';
+            }
+        }
+
+        async function deleteItem(type, id) {
+            if (!confirm(`確定要刪除這個${type === 'category' ? '分類' : '商品'}嗎？`)) return;
+
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_delete_catalog_item', payload: { type, id } })
+                });
+                let rs = await res.json();
+                if (rs.success) {
+                    fetchCatalog();
+                } else alert("刪除失敗: " + rs.message);
+            } catch (e) {
+                alert("錯誤: " + e.message);
             }
         }
     </script>
