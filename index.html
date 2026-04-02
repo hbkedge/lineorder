@@ -335,7 +335,6 @@
             try {
               let rs = JSON.parse(res);
               if (rs.success) {
-                state.store = rs.store || {};
                 state.categories = rs.categories || [];
                 state.products = rs.products || [];
                 state.options = rs.product_options || [];
@@ -355,6 +354,7 @@
             try {
               let rs = JSON.parse(res);
               if (rs.success) {
+                state.store = rs.store || {};
                 state.slots = rs.slots || [];
               } else {
                 reject(new Error(rs.message || "讀取門市資訊失敗 (API Error)"));
@@ -389,6 +389,7 @@
           });
           let rsStore = await resStore.json();
           if (rsStore.success) {
+            state.store = rsStore.store || {};
             state.slots = rsStore.slots || [];
           } else {
             throw new Error("API store_info error: " + rsStore.message);
