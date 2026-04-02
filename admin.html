@@ -346,6 +346,35 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-12 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0 fw-bold">👥 員工與權限群組 (帳號綁定)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>員工姓名</th>
+                                                <th>LINE user_id</th>
+                                                <th>角色群組</th>
+                                                <th>帳號狀態</th>
+                                                <th class="text-end">管理</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="staffListUI" class="text-center">
+                                            <tr>
+                                                <td colspan="5" class="text-muted text-center p-3">讀取中...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button class="btn btn-outline-primary mt-3" onclick="openStaffModal()">+
+                                    新增員工帳號</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -476,9 +505,41 @@
                             <option value="false">關閉</option>
                         </select></div>
                 </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                    data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary"
+                    onclick="saveSlot()" id="btnSaveSlot">儲存</button></div>
+        </div>
+    </div>
+    </div>
+
+    <div class="modal fade" id="staffModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">編輯員工權限</h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="staff_id">
+                    <div class="mb-3"><label>員工姓名</label><input type="text" id="staff_name" class="form-control"></div>
+                    <div class="mb-3"><label>登入用 LINE User ID (或帳號)</label><input type="text" id="staff_line_id"
+                            class="form-control" placeholder="U1234567..."></div>
+                    <div class="mb-3"><label>角色權限群組 (UI標示用)</label>
+                        <select id="staff_role" class="form-select">
+                            <option value="老闆">老闆 (全部權限)</option>
+                            <option value="店長">店長 (全部權限)</option>
+                            <option value="櫃台">櫃台 (接單、結帳)</option>
+                            <option value="廚房">廚房 (僅看看板)</option>
+                            <option value="財務">財務 (僅看報表)</option>
+                        </select>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                            id="staff_active" checked><label class="form-check-label">帳號啟用</label></div>
+                </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary"
                         data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary"
-                        onclick="saveSlot()" id="btnSaveSlot">儲存</button></div>
+                        onclick="saveStaff()" id="btnSaveStaff">儲存</button></div>
             </div>
         </div>
     </div>
@@ -486,8 +547,8 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbzG5aSsxvduJRoww4ZZ9XNFpMEVRL93ThZNJXLQld3koAJCYqp5pecSuHARVxl13O0fSQ/exec";
         let currentTab = 'orders';
-        let ordersCache = []; let historyCache = []; let catalogCache = { categories: [], products: [] }; let slotsCache = [];
-        let catModalInstance, prodModalInstance, slotModalInstance, orderModalInstance;
+        let ordersCache = []; let historyCache = []; let catalogCache = { categories: [], products: [] }; let slotsCache = []; let staffCache = [];
+        let catModalInstance, prodModalInstance, slotModalInstance, orderModalInstance, staffModalInstance;
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchOrders(); setInterval(() => { if (currentTab === 'orders') fetchOrders() }, 30000);
@@ -495,6 +556,7 @@
             prodModalInstance = new bootstrap.Modal(document.getElementById('prodModal'));
             slotModalInstance = new bootstrap.Modal(document.getElementById('slotModal'));
             orderModalInstance = new bootstrap.Modal(document.getElementById('orderModal'));
+            staffModalInstance = new bootstrap.Modal(document.getElementById('staffModal'));
         });
 
         function refreshData() {
@@ -509,15 +571,82 @@
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_resource', payload: { table: 'stores' } }) });
                 let rs = await res.json();
                 if (rs.success) {
-                    let s = rs.data[0] || {};
+                    // Find the first valid store config or fallback to first row
+                    let s = rs.data.find(x => x.store_id) || rs.data[rs.data.length - 1] || {};
                     document.getElementById('store_id').value = s.store_id || '';
                     document.getElementById('store_name').value = s.store_name || '';
                     document.getElementById('store_phone').value = s.phone || '';
                     document.getElementById('store_hours').value = s.business_hours || '';
-                    let isOpen = s.is_open === true || s.is_open === 1 || String(s.is_open).toUpperCase() === 'TRUE';
+                    // is_open can be boolean true, integer 1, or string 'TRUE' / 'TRUE' check inside spreadsheet. Default true.
+                    let isOpen = (s.is_open === true || s.is_open === 1 || String(s.is_open).toUpperCase() === 'TRUE');
+                    if (s.store_id === undefined) isOpen = true; // New Store defaults to open
                     document.getElementById('store_is_open').checked = isOpen;
                 }
+
+                // Fetch Staff Accounts
+                let resStaff = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_resource', payload: { table: 'staff_users' } }) });
+                let rsStaff = await resStaff.json();
+                if (rsStaff.success) {
+                    staffCache = rsStaff.data || [];
+                    renderStaffList();
+                }
             } catch (e) { console.error("fetch settings error: ", e); }
+        }
+
+        function renderStaffList() {
+            const html = staffCache.map(s => {
+                const isActive = (s.is_active === true || s.is_active === 1 || String(s.is_active).toUpperCase() === 'TRUE');
+                const badge = isActive ? '<span class="badge bg-success">正常</span>' : '<span class="badge bg-secondary">停用</span>';
+                return `<tr>
+                    <td>${s.staff_name}</td>
+                    <td><small>${s.login_account || '無'}</small></td>
+                    <td>${s.role}</td>
+                    <td>${badge}</td>
+                    <td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="openStaffModal('${s.staff_id}')">編輯</button></td>
+                </tr>`;
+            }).join('');
+            document.getElementById('staffListUI').innerHTML = html || '<tr><td colspan="5" class="text-center text-muted p-4">目前尚無員工帳號，請點擊新增</td></tr>';
+        }
+
+        function openStaffModal(id = null) {
+            if (id) {
+                let s = staffCache.find(x => x.staff_id === id);
+                document.getElementById('staff_id').value = s.staff_id;
+                document.getElementById('staff_name').value = s.staff_name || '';
+                document.getElementById('staff_line_id').value = s.login_account || '';
+                document.getElementById('staff_role').value = s.role || '店長';
+                document.getElementById('staff_active').checked = (s.is_active === true || s.is_active === 1 || String(s.is_active).toUpperCase() === 'TRUE');
+            } else {
+                document.getElementById('staff_id').value = '';
+                document.getElementById('staff_name').value = '';
+                document.getElementById('staff_line_id').value = '';
+                document.getElementById('staff_role').value = '店長';
+                document.getElementById('staff_active').checked = true;
+            }
+            staffModalInstance.show();
+        }
+
+        async function saveStaff() {
+            const btn = document.getElementById('btnSaveStaff'); btn.disabled = true; btn.innerText = '處理中...';
+            try {
+                const payload = {
+                    action: 'admin_save_resource',
+                    payload: {
+                        table: 'staff_users', id_field: 'staff_id',
+                        data: {
+                            staff_id: document.getElementById('staff_id').value,
+                            staff_name: document.getElementById('staff_name').value,
+                            login_account: document.getElementById('staff_line_id').value,
+                            role: document.getElementById('staff_role').value,
+                            is_active: document.getElementById('staff_active').checked ? 'TRUE' : 'FALSE'
+                        }
+                    }
+                };
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let rs = await res.json();
+                if (rs.success) { staffModalInstance.hide(); fetchSettings(); }
+                else alert("錯誤：" + rs.message);
+            } catch (e) { alert("連線錯誤：" + e.message); } finally { btn.disabled = false; btn.innerText = '儲存'; }
         }
 
         async function saveStore() {
