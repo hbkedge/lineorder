@@ -141,6 +141,8 @@
 </head>
 
 <body>
+    <audio id="newOrderChime"
+        src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3"></audio>
     <nav class="navbar navbar-dark bg-dark px-3">
         <a class="navbar-brand fw-bold" href="#">LINE外帶接單 - 後台管理</a>
         <div class="d-flex align-items-center">
@@ -158,6 +160,10 @@
                 type="button" onclick="currentTab='menu'; fetchCatalog()">🍔 菜單商品管理</button></li>
         <li class="nav-item"><button class="nav-link fw-bold" id="slots-tab" data-bs-toggle="tab"
                 data-bs-target="#slots" type="button" onclick="currentTab='slots'; fetchSlots()">🕒 取餐時段與容量管理</button>
+        </li>
+        <li class="nav-item"><button class="nav-link fw-bold" id="settings-tab" data-bs-toggle="tab"
+                data-bs-target="#settings" type="button" onclick="currentTab='settings'; fetchSettings()">⚙️
+                系統設定</button>
         </li>
     </ul>
 
@@ -191,8 +197,12 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 fw-bold">歷史訂單查詢與維護</h5>
-                        <input type="text" id="orderSearchInput" class="form-control me-2 w-50"
-                            placeholder="搜尋: 顧客名稱, 電話, 單號..." onkeyup="filterHistory()">
+                        <div class="d-flex w-50">
+                            <input type="text" id="orderSearchInput" class="form-control me-2"
+                                placeholder="搜尋: 顧客名稱, 電話, 單號..." onkeyup="filterHistory()">
+                            <button class="btn btn-outline-success fw-bold text-nowrap" onclick="exportCSV()"><small>匯出
+                                    CSV</small></button>
+                        </div>
                     </div>
                     <div class="table-responsive" style="height: calc(100vh - 250px);">
                         <table class="table table-hover align-middle mb-0 text-center">
@@ -282,6 +292,52 @@
                                 </thead>
                                 <tbody id="slotsListUI"></tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Settings Tab -->
+        <div class="tab-pane fade h-100 overflow-auto" id="settings">
+            <div class="container-fluid p-4">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0 fw-bold">門市資訊與營業狀態</h5>
+                            </div>
+                            <div class="card-body">
+                                <input type="hidden" id="store_id">
+                                <div class="mb-3"><label>門市名稱</label><input type="text" id="store_name"
+                                        class="form-control"></div>
+                                <div class="mb-3"><label>聯絡電話</label><input type="text" id="store_phone"
+                                        class="form-control"></div>
+                                <div class="mb-3"><label>營業時間文字</label><input type="text" id="store_hours"
+                                        class="form-control"></div>
+                                <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox"
+                                        id="store_is_open"><label class="form-check-label fw-bold">開啟營業接單</label></div>
+                                <button class="btn btn-primary w-100" id="btnSaveStore"
+                                    onclick="saveStore()">儲存門市設定</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0">
+                            <div class="card-header bg-white">
+                                <h5 class="mb-0 fw-bold">系統管理說明</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning">
+                                    <h6 class="fw-bold">角色權限 (開發中...)</h6>
+                                    <p class="mb-0 small">目前預設所有擁有本連結的人皆為「老闆(最高權限)」。若需實作員工帳號登入系統，需進一步加裝身分驗證層。</p>
+                                </div>
+                                <hr>
+                                <div class="alert alert-success mt-3">
+                                    <h6 class="fw-bold">促銷與折價券 (發放準備中)</h6>
+                                    <p class="mb-0 small">試算表中已預留 coupons 資料夾，供未來串接結帳抵扣使用。</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -438,6 +494,51 @@
         function refreshData() {
             if (currentTab === 'orders') fetchOrders(); else if (currentTab === 'history') fetchHistory();
             else if (currentTab === 'menu') fetchCatalog(); else if (currentTab === 'slots') fetchSlots();
+            else if (currentTab === 'settings') fetchSettings();
+        }
+
+        // --- 設定邏輯 ---
+        async function fetchSettings() {
+            try {
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_resource', payload: { table: 'stores' } }) });
+                let rs = await res.json();
+                if (rs.success) {
+                    let s = rs.data[0] || {};
+                    document.getElementById('store_id').value = s.store_id || '';
+                    document.getElementById('store_name').value = s.store_name || '';
+                    document.getElementById('store_phone').value = s.phone || '';
+                    document.getElementById('store_hours').value = s.business_hours || '';
+                    let isOpen = s.is_open === true || s.is_open === 1 || String(s.is_open).toUpperCase() === 'TRUE';
+                    document.getElementById('store_is_open').checked = isOpen;
+                }
+            } catch (e) { console.error("fetch settings error: ", e); }
+        }
+
+        async function saveStore() {
+            const btn = document.getElementById('btnSaveStore'); btn.disabled = true; btn.innerText = '儲存中...';
+            try {
+                const payload = {
+                    action: 'admin_save_resource',
+                    payload: {
+                        table: 'stores', id_field: 'store_id',
+                        data: {
+                            store_id: document.getElementById('store_id').value,
+                            store_name: document.getElementById('store_name').value,
+                            phone: document.getElementById('store_phone').value,
+                            business_hours: document.getElementById('store_hours').value,
+                            is_open: document.getElementById('store_is_open').checked ? 'TRUE' : 'FALSE'
+                        }
+                    }
+                };
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let rs = await res.json();
+                if (rs.success) {
+                    alert("儲存成功！");
+                    if (!document.getElementById('store_id').value) document.getElementById('store_id').value = rs.id_val;
+                } else {
+                    alert("錯誤：" + rs.message);
+                }
+            } catch (e) { alert("連線錯誤：" + e.message); } finally { btn.disabled = false; btn.innerText = '儲存門市設定'; }
         }
 
         // --- 看板邏輯 ---
@@ -457,6 +558,13 @@
             const pending = ordersCache.filter(o => o.order_status === 'pending');
             const accepted = ordersCache.filter(o => o.order_status === 'accepted' || o.order_status === 'preparing');
             const ready = ordersCache.filter(o => o.order_status === 'ready');
+
+            // Play chime if new pending orders are detected
+            if (pending.length > lastPendingCount && lastPendingCount !== 0) {
+                try { document.getElementById('newOrderChime').play().catch(e => { }); } catch (e) { }
+            }
+            lastPendingCount = pending.length;
+
             document.getElementById('countPending').innerText = pending.length;
             document.getElementById('countAccepted').innerText = accepted.length;
             document.getElementById('countReady').innerText = ready.length;
@@ -506,6 +614,15 @@
                     <td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="openOrderEdit('${o.order_id}', 'history')">詳細 / 改單</button></td>
                 </tr>`).join('');
             document.getElementById('historyListUI').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted p-4">查無資料</td></tr>';
+        }
+
+        function exportCSV() {
+            if (historyCache.length === 0) return alert("無資料可匯出");
+            const headers = ['訂單單號', '訂單日期', '取餐時間', '顧客名稱', '電話', '總額', '訂單狀態', '付款方式'];
+            const rows = historyCache.map(o => [o.order_no.substring(4), o.created_at?.split('T')[0] || '', o.pickup_time || '', o.customer?.display_name || '', o.customer?.phone || '', o.total_amount, o.status_text || o.order_status, o.payment_method || 'cash']);
+            const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
+            a.download = `orders_export_${new Date().getTime()}.csv`; a.click();
         }
 
         function openOrderEdit(orderId, source) {
