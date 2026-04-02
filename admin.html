@@ -547,7 +547,7 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbzG5aSsxvduJRoww4ZZ9XNFpMEVRL93ThZNJXLQld3koAJCYqp5pecSuHARVxl13O0fSQ/exec";
         let currentTab = 'orders';
-        let ordersCache = []; let historyCache = []; let catalogCache = { categories: [], products: [] }; let slotsCache = []; let staffCache = [];
+        let ordersCache = []; let historyCache = []; let catalogCache = { categories: [], products: [] }; let slotsCache = []; let staffCache = []; let lastPendingCount = 0;
         let catModalInstance, prodModalInstance, slotModalInstance, orderModalInstance, staffModalInstance;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -729,9 +729,11 @@
             if (type === 'pending') actions = `<button class="btn btn-sm btn-primary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'accepted')">接單</button>`;
             else if (type === 'accepted') actions = `<button class="btn btn-sm btn-success flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'ready')">做好了</button>`;
             else if (type === 'ready') actions = `<button class="btn btn-sm btn-warning flex-grow-1" onclick="callNumber('${o.order_id}')">🔔 叫號 / 過號提醒</button><button class="btn btn-sm btn-outline-secondary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'completed')">結單 (顧客取走)</button>`;
+            const orderNoStr = String(o.order_no || '');
+            const displayOrderNo = orderNoStr.length >= 4 ? orderNoStr.substring(orderNoStr.length - 4) : orderNoStr;
             return `<div class="order-card position-relative">
               <button class="position-absolute top-0 end-0 btn btn-link p-2 text-muted" onclick="openOrderEdit('${o.order_id}', 'kanban')"><small>⚙️ 改單</small></button>
-              <div class="order-header w-75"><span class="text-secondary fw-bold" style="font-size:1.1rem;">#${o.order_no.substring(o.order_no.length - 4)}</span> <span class="time">${o.pickup_time || ''}</span></div>
+              <div class="order-header w-75"><span class="text-secondary fw-bold" style="font-size:1.1rem;">#${displayOrderNo}</span> <span class="time">${o.pickup_time || ''}</span></div>
               <div class="mb-2 text-muted" style="font-size:0.8rem;">
                 顧客: ${o.customer?.display_name || '無'} (${o.customer?.phone || '無電話'})<br>金額: <b>$${o.total_amount}</b> | ${o.payment_status}
               </div>
@@ -768,8 +770,20 @@
         function exportCSV() {
             if (historyCache.length === 0) return alert("無資料可匯出");
             const headers = ['訂單單號', '訂單日期', '取餐時間', '顧客名稱', '電話', '總額', '訂單狀態', '付款方式'];
-            const rows = historyCache.map(o => [o.order_no.substring(4), o.created_at?.split('T')[0] || '', o.pickup_time || '', o.customer?.display_name || '', o.customer?.phone || '', o.total_amount, o.status_text || o.order_status, o.payment_method || 'cash']);
-            const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.join(",")).join("\n");
+            const rows = historyCache.map(o => {
+                const orderNoStr = String(o.order_no || '');
+                return [
+                    orderNoStr.length > 4 ? orderNoStr.substring(4) : orderNoStr,
+                    o.created_at?.split('T')[0] || '',
+                    o.pickup_time || '',
+                    o.customer?.display_name || '',
+                    o.customer?.phone || '',
+                    o.total_amount,
+                    o.status_text || o.order_status,
+                    o.payment_method || 'cash'
+                ];
+            });
+            const csvContent = "\uFEFF" + [headers, ...rows.map(r => r.join(","))].join("\n");
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv' }));
             a.download = `orders_export_${new Date().getTime()}.csv`; a.click();
         }
@@ -784,7 +798,8 @@
             document.getElementById('edit_customer_note').value = o.customer_note || '';
 
             const dHtml = (o.items || []).map(i => `<div>${i.product_name} x <b>${i.qty}</b> <span class="text-muted float-end">$${i.item_total}</span></div>`).join('');
-            document.getElementById('edit_order_details').innerHTML = `<div class="mb-2 pb-1 border-bottom"><b>${o.order_no}</b> | $${o.total_amount}</div>${dHtml}`;
+            const orderNoStr = String(o.order_no || '');
+            document.getElementById('edit_order_details').innerHTML = `<div class="mb-2 pb-1 border-bottom"><b>${orderNoStr}</b> | $${o.total_amount}</div>${dHtml}`;
             orderModalInstance.show();
         }
 
