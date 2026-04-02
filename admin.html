@@ -161,6 +161,10 @@
             <button class="nav-link fw-bold" id="menu-tab" data-bs-toggle="tab" data-bs-target="#menu" type="button"
                 role="tab" onclick="currentTab='menu'; fetchCatalog()">🍔 菜單商品管理</button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="slots-tab" data-bs-toggle="tab" data-bs-target="#slots" type="button"
+                role="tab" onclick="currentTab='slots'; fetchSlots()">🕒 取餐時段與容量管理</button>
+        </li>
     </ul>
 
     <!-- Tab Content -->
@@ -243,6 +247,42 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === 取餐時段管理 Tab === -->
+        <div class="tab-pane fade h-100 overflow-auto" id="slots" role="tabpanel">
+            <div class="container-fluid p-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">取餐時段與容量控制</h5>
+                        <button class="btn btn-sm btn-primary" onclick="openSlotModal()">+ 新增時段</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info py-2 small">
+                            💡 若日期留空，代表這是每天都會常態出現的時段。若指定日期，則只有那天會開放該時段。
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 text-center">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>指定日期</th>
+                                        <th>取餐時間</th>
+                                        <th>接單上限量</th>
+                                        <th>目前已接數</th>
+                                        <th>開放狀態</th>
+                                        <th class="text-end">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="slotsListUI">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted p-4">讀取中...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -348,6 +388,44 @@
         </div>
     </div>
 
+    <!-- Pickup Slot Modal -->
+    <div class="modal fade" id="slotModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">編輯取餐時段與容量</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="slot_id">
+                    <div class="mb-3">
+                        <label class="form-label">限定日期 (若空白代表每天/常態時段)</label>
+                        <input type="date" id="slot_date" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">取餐時間區間 (例如：12:00-12:30)</label>
+                        <input type="text" id="slot_time" class="form-control" placeholder="輸入時段代號或區間" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">該時段接單數量上限</label>
+                        <input type="number" id="slot_max" class="form-control" value="10" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">目前是否開放此時段預約</label>
+                        <select id="slot_active" class="form-select">
+                            <option value="true">✅ 開放接單</option>
+                            <option value="false">🚫 關閉停接</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSlot()" id="btnSaveSlot">儲存變更</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script>
         // Configuration - MUST MATCH YOUR BACKEND CONFIG
@@ -356,9 +434,11 @@
         let currentTab = 'orders';
         let ordersCache = [];
         let catalogCache = { categories: [], products: [] };
+        let slotsCache = [];
 
         let catModalInstance = null;
         let prodModalInstance = null;
+        let slotModalInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchOrders();
@@ -366,11 +446,13 @@
 
             catModalInstance = new bootstrap.Modal(document.getElementById('catModal'));
             prodModalInstance = new bootstrap.Modal(document.getElementById('prodModal'));
+            slotModalInstance = new bootstrap.Modal(document.getElementById('slotModal'));
         });
 
         function refreshData() {
             if (currentTab === 'orders') fetchOrders();
-            else fetchCatalog();
+            else if (currentTab === 'menu') fetchCatalog();
+            else if (currentTab === 'slots') fetchSlots();
         }
 
         // ==================== 訂單看板邏輯 ====================
@@ -543,8 +625,6 @@
             document.getElementById('prodListUI').innerHTML = prodHtml || '<tr><td colspan="6" class="text-center text-muted p-4">尚未建立商品</td></tr>';
         }
 
-        // --- Model Actions ---
-
         function openCatModal() {
             document.getElementById('cat_id').value = '';
             document.getElementById('cat_name').value = '';
@@ -585,11 +665,8 @@
                     catModalInstance.hide();
                     fetchCatalog();
                 } else alert("分類儲存失敗: " + rs.message);
-            } catch (e) {
-                alert("錯誤: " + e.message);
-            } finally {
-                btn.disabled = false; btn.innerText = '儲存變更';
-            }
+            } catch (e) { alert("錯誤: " + e.message); }
+            finally { btn.disabled = false; btn.innerText = '儲存變更'; }
         }
 
         function openProdModal() {
@@ -645,29 +722,151 @@
                     prodModalInstance.hide();
                     fetchCatalog();
                 } else alert("商品儲存失敗: " + rs.message);
-            } catch (e) {
-                alert("錯誤: " + e.message);
-            } finally {
-                btn.disabled = false; btn.innerText = '儲存商品';
-            }
+            } catch (e) { alert("錯誤: " + e.message); }
+            finally { btn.disabled = false; btn.innerText = '儲存商品'; }
         }
 
         async function deleteItem(type, id) {
             if (!confirm(`確定要刪除這個${type === 'category' ? '分類' : '商品'}嗎？`)) return;
-
             try {
                 let res = await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify({ action: 'admin_delete_catalog_item', payload: { type, id } })
                 });
                 let rs = await res.json();
+                if (rs.success) fetchCatalog();
+                else alert("刪除失敗: " + rs.message);
+            } catch (e) { alert("錯誤: " + e.message); }
+        }
+
+        // ==================== 取餐時段與容量管理邏輯 ====================
+
+        async function fetchSlots() {
+            document.getElementById('slotsListUI').innerHTML = '<tr><td colspan="6" class="text-center text-muted p-4">讀取中...</td></tr>';
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_get_slots' })
+                });
+                let rs = await res.json();
                 if (rs.success) {
-                    fetchCatalog();
-                } else alert("刪除失敗: " + rs.message);
+                    slotsCache = rs.slots || [];
+                    renderSlots();
+                    const now = new Date();
+                    document.getElementById('lastUpdated').innerText = `最後更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                } else alert("取餐時段讀取失敗：" + rs.message);
             } catch (e) {
-                alert("錯誤: " + e.message);
+                console.error(e);
             }
         }
+
+        function renderSlots() {
+            const slots = slotsCache.filter(s => s.status !== 'deleted');
+            // 排序：有日期的放前面，然後以時間排序
+            slots.sort((a, b) => {
+                const dateA = a.pickup_date || 'ZZZ';
+                const dateB = b.pickup_date || 'ZZZ';
+                if (dateA === dateB) {
+                    return (a.pickup_time || '').localeCompare(b.pickup_time || '');
+                }
+                return dateA.localeCompare(dateB);
+            });
+
+            const html = slots.map(s => {
+                const stateVal = s.is_available !== undefined ? s.is_available : s.is_active;
+                const isActive = String(stateVal) === 'true' || stateVal === 1 || String(stateVal).toUpperCase() === 'TRUE';
+                const current = parseInt(s.current_orders) || 0;
+                const max = parseInt(s.max_orders) || 0;
+                let bgClass = '';
+                if (isActive && current >= max) bgClass = 'text-danger fw-bold';
+
+                return `
+                <tr class="${isActive ? '' : 'table-light text-muted'}">
+                    <td>${s.pickup_date ? `<span class="badge bg-secondary">${s.pickup_date}</span>` : '<span class="badge border text-dark">常態每天</span>'}</td>
+                    <td class="fw-bold">${s.pickup_time || '未指定'}</td>
+                    <td>${max}</td>
+                    <td><span class="${bgClass}">${current}</span> ${current >= max ? '<span class="badge bg-danger ms-1">額滿</span>' : ''}</td>
+                    <td>
+                        ${isActive ? '<span class="badge bg-success">✅ 開放中</span>' : '<span class="badge bg-secondary">🚫 已關閉</span>'}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editSlot('${s.slot_id}')">編輯</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSlot('${s.slot_id}')">刪除</button>
+                    </td>
+                </tr>`;
+            }).join('');
+            document.getElementById('slotsListUI').innerHTML = html || '<tr><td colspan="6" class="text-center text-muted p-4">尚未建立任何時段設定</td></tr>';
+        }
+
+        function openSlotModal() {
+            document.getElementById('slot_id').value = '';
+            document.getElementById('slot_date').value = '';
+            document.getElementById('slot_time').value = '';
+            document.getElementById('slot_max').value = '10';
+            document.getElementById('slot_active').value = 'true';
+            slotModalInstance.show();
+        }
+
+        function editSlot(id) {
+            const s = slotsCache.find(x => x.slot_id === id);
+            if (!s) return;
+            document.getElementById('slot_id').value = s.slot_id;
+
+            // Format HTML Date if needed
+            let d = s.pickup_date || '';
+            // HTML5 input type=date accepts YYYY-MM-DD
+            if (d.includes('/')) d = d.replace(/\//g, '-');
+
+            document.getElementById('slot_date').value = d;
+            document.getElementById('slot_time').value = s.pickup_time || '';
+            document.getElementById('slot_max').value = s.max_orders || 10;
+
+            const stateVal = s.is_available !== undefined ? s.is_available : s.is_active;
+            const isActive = String(stateVal) === 'true' || stateVal === 1 || String(stateVal).toUpperCase() === 'TRUE';
+            document.getElementById('slot_active').value = isActive ? 'true' : 'false';
+
+            slotModalInstance.show();
+        }
+
+        async function saveSlot() {
+            const btn = document.getElementById('btnSaveSlot');
+            btn.disabled = true; btn.innerText = '儲存中...';
+
+            const payload = {
+                slot_id: document.getElementById('slot_id').value,
+                pickup_date: document.getElementById('slot_date').value,
+                pickup_time: document.getElementById('slot_time').value,
+                max_orders: parseInt(document.getElementById('slot_max').value) || 10,
+                is_available: document.getElementById('slot_active').value === 'true'
+            };
+
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_save_slot', payload })
+                });
+                let rs = await res.json();
+                if (rs.success) {
+                    slotModalInstance.hide();
+                    fetchSlots();
+                } else alert("儲存失敗: " + rs.message);
+            } catch (e) { alert("錯誤: " + e.message); }
+            finally { btn.disabled = false; btn.innerText = '儲存變更'; }
+        }
+
+        async function deleteSlot(id) {
+            if (!confirm("確定要刪除/停用這個時段嗎？這將導致前台無法再選擇預約。")) return;
+            try {
+                let res = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'admin_delete_slot', payload: { slot_id: id } })
+                });
+                let rs = await res.json();
+                if (rs.success) fetchSlots();
+                else alert("刪除失敗: " + rs.message);
+            } catch (e) { alert("錯誤: " + e.message); }
+        }
+
     </script>
 </body>
 

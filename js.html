@@ -134,7 +134,7 @@
     }
 
     function renderProducts(catId) {
-        const products = state.products.filter(p => p.category_id === catId);
+        const products = state.products.filter(p => String(p.category_id) === String(catId));
         const html = products.map(p => {
             return `<div class="product-card">
       <img src="${p.image_url || 'https://via.placeholder.com/100'}" alt="${p.product_name}" class="product-img">
