@@ -5,10 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>【店家後台】LINE 接單管理看板</title>
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <style>
         body {
             background-color: #f0f2f5;
@@ -79,6 +77,7 @@
             margin-bottom: 12px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             border-left: 5px solid transparent;
+            position: relative;
         }
 
         .kanban-column.pending .order-card {
@@ -142,7 +141,6 @@
 </head>
 
 <body>
-
     <nav class="navbar navbar-dark bg-dark px-3">
         <a class="navbar-brand fw-bold" href="#">LINE外帶接單 - 後台管理</a>
         <div class="d-flex align-items-center">
@@ -150,74 +148,51 @@
             <button class="btn btn-sm btn-success fw-bold" onclick="refreshData()">重新整理</button>
         </div>
     </nav>
-
-    <!-- Nav Tabs -->
     <ul class="nav nav-tabs px-3 pt-2 bg-white" id="adminTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders"
-                type="button" role="tab" onclick="currentTab='orders'">📌 接單看板</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="history-tab" data-bs-toggle="tab" data-bs-target="#history"
-                type="button" role="tab" onclick="currentTab='history'; fetchHistory()">📜 所有訂單與改單</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="menu-tab" data-bs-toggle="tab" data-bs-target="#menu" type="button"
-                role="tab" onclick="currentTab='menu'; fetchCatalog()">🍔 菜單商品管理</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="slots-tab" data-bs-toggle="tab" data-bs-target="#slots" type="button"
-                role="tab" onclick="currentTab='slots'; fetchSlots()">🕒 取餐時段與容量管理</button>
+        <li class="nav-item"><button class="nav-link active fw-bold" id="orders-tab" data-bs-toggle="tab"
+                data-bs-target="#orders" type="button" onclick="currentTab='orders'">📌 接單看板</button></li>
+        <li class="nav-item"><button class="nav-link fw-bold" id="history-tab" data-bs-toggle="tab"
+                data-bs-target="#history" type="button" onclick="currentTab='history'; fetchHistory()">📜
+                所有訂單與改單</button></li>
+        <li class="nav-item"><button class="nav-link fw-bold" id="menu-tab" data-bs-toggle="tab" data-bs-target="#menu"
+                type="button" onclick="currentTab='menu'; fetchCatalog()">🍔 菜單商品管理</button></li>
+        <li class="nav-item"><button class="nav-link fw-bold" id="slots-tab" data-bs-toggle="tab"
+                data-bs-target="#slots" type="button" onclick="currentTab='slots'; fetchSlots()">🕒 取餐時段與容量管理</button>
         </li>
     </ul>
 
-    <!-- Tab Content -->
     <div class="tab-content main-content" id="adminTabContent">
-
-        <!-- === 接單看板 Tab === -->
-        <div class="tab-pane fade show active h-100" id="orders" role="tabpanel">
+        <!-- 1. Kanban Tab -->
+        <div class="tab-pane fade show active h-100" id="orders">
             <div class="kanban-board">
-                <!-- Pending Column -->
                 <div class="kanban-column pending">
-                    <div class="column-header">
-                        <span>新進訂單 (待接單)</span>
-                        <span class="badge bg-danger rounded-pill" id="countPending">0</span>
-                    </div>
+                    <div class="column-header"><span>新進訂單 (待接單)</span><span class="badge bg-danger rounded-pill"
+                            id="countPending">0</span></div>
                     <div class="column-body" id="colPending">
                         <div class="text-center mt-4 text-muted small spinner-border d-none">讀取中...</div>
                     </div>
                 </div>
-
-                <!-- Accepted Column -->
                 <div class="kanban-column accepted">
-                    <div class="column-header">
-                        <span>製作中</span>
-                        <span class="badge bg-primary rounded-pill" id="countAccepted">0</span>
-                    </div>
+                    <div class="column-header"><span>製作中</span><span class="badge bg-primary rounded-pill"
+                            id="countAccepted">0</span></div>
                     <div class="column-body" id="colAccepted"></div>
                 </div>
-
-                <!-- Ready Column -->
                 <div class="kanban-column ready">
-                    <div class="column-header">
-                        <span>待顧客取餐 / 可叫號</span>
-                        <span class="badge bg-success rounded-pill" id="countReady">0</span>
-                    </div>
+                    <div class="column-header"><span>待顧客取餐 / 可叫號</span><span class="badge bg-success rounded-pill"
+                            id="countReady">0</span></div>
                     <div class="column-body" id="colReady"></div>
                 </div>
             </div>
         </div>
 
-        <!-- === 所有訂單查詢與改單 Tab === -->
-        <div class="tab-pane fade h-100 overflow-auto" id="history" role="tabpanel">
+        <!-- 2. History Tab -->
+        <div class="tab-pane fade h-100 overflow-auto" id="history">
             <div class="container-fluid p-4">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 fw-bold">歷史訂單查詢與維護</h5>
-                        <div class="d-flex w-50">
-                            <input type="text" id="orderSearchInput" class="form-control me-2"
-                                placeholder="搜尋: 顧客名稱, 電話, 單號..." onkeyup="filterHistory()">
-                        </div>
+                        <input type="text" id="orderSearchInput" class="form-control me-2 w-50"
+                            placeholder="搜尋: 顧客名稱, 電話, 單號..." onkeyup="filterHistory()">
                     </div>
                     <div class="table-responsive" style="height: calc(100vh - 250px);">
                         <table class="table table-hover align-middle mb-0 text-center">
@@ -243,29 +218,24 @@
             </div>
         </div>
 
-        <!-- === 菜單管理 Tab === -->
-        <div class="tab-pane fade h-100 overflow-auto" id="menu" role="tabpanel">
+        <!-- 3. Menu Tab -->
+        <div class="tab-pane fade h-100 overflow-auto" id="menu">
             <div class="container-fluid p-4">
                 <div class="row">
-                    <!-- 分類管理 -->
                     <div class="col-md-3 mb-4">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0 fw-bold">商品分類</h5>
-                                <button class="btn btn-sm btn-outline-primary" onclick="openCatModal()">+ 新增</button>
+                                <h5 class="mb-0 fw-bold">商品分類</h5><button class="btn btn-sm btn-outline-primary"
+                                    onclick="openCatModal()">+ 新增</button>
                             </div>
-                            <div class="list-group list-group-flush" id="catListUI">
-                                <div class="p-3 text-center text-muted">讀取中...</div>
-                            </div>
+                            <div class="list-group list-group-flush" id="catListUI"></div>
                         </div>
                     </div>
-
-                    <!-- 商品列表 -->
                     <div class="col-md-9 mb-4">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0 fw-bold">商品明細維護</h5>
-                                <button class="btn btn-sm btn-primary" onclick="openProdModal()">+ 新增商品</button>
+                                <h5 class="mb-0 fw-bold">商品明細維護</h5><button class="btn btn-sm btn-primary"
+                                    onclick="openProdModal()">+ 新增商品</button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">
@@ -279,11 +249,7 @@
                                             <th class="text-end">操作</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="prodListUI">
-                                        <tr>
-                                            <td colspan="6" class="text-center text-muted p-4">讀取中...</td>
-                                        </tr>
-                                    </tbody>
+                                    <tbody id="prodListUI"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -292,26 +258,16 @@
             </div>
         </div>
 
-        <!-- === 取餐時段管理 Tab === -->
-        <div class="tab-pane fade h-100 overflow-auto" id="slots" role="tabpanel">
-            ......
-        </div>
-    </div>
-
-
-    <div class="tab-pane fade h-100 overflow-auto" id="slots" role="tabpanel" style="display:none;"></div>
-    <!-- Overriding bad layout for slots due to character limit context, full definition below -->
-    <script> document.getElementById('slots').innerHTML = `
+        <!-- 4. Slots Tab -->
+        <div class="tab-pane fade h-100 overflow-auto" id="slots">
             <div class="container-fluid p-4">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold">取餐時段與容量控制</h5>
-                        <button class="btn btn-sm btn-primary" onclick="openSlotModal()">+ 新增時段</button>
+                        <h5 class="mb-0 fw-bold">取餐時段與容量控制</h5><button class="btn btn-sm btn-primary"
+                            onclick="openSlotModal()">+ 新增時段</button>
                     </div>
                     <div class="card-body">
-                        <div class="alert alert-info py-2 small">
-                            💡 若日期留空，代表這是每天都會常態出現的時段。若指定日期，則只有那天會開放該時段。
-                        </div>
+                        <div class="alert alert-info py-2 small">💡 若日期留空，代表這是每天都會常態出現的時段。若指定日期，則只有那天會開放該時段。</div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0 text-center">
                                 <thead class="table-light">
@@ -324,228 +280,155 @@
                                         <th class="text-end">操作</th>
                                     </tr>
                                 </thead>
-                                <tbody id="slotsListUI">
-                                    <tr><td colspan="6" class="text-center text-muted p-4">讀取中...</td></tr>
-                                </tbody>
+                                <tbody id="slotsListUI"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-            </div>`; 
-    </script>
-
+            </div>
+        </div>
+    </div>
 
     <!-- === Modals === -->
-
-    <!-- Order Edit Modal (New) -->
     <div class="modal fade" id="orderModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold">訂單詳細與後台改單</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title fw-bold">訂單詳細與改單</h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="edit_order_id">
-
-                    <div class="alert alert-light border mb-3" id="edit_order_details">
-                        <!-- load order details -->
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">訂單處理狀態</label>
+                    <div class="alert alert-light border mb-3" id="edit_order_details"></div>
+                    <div class="mb-3"><label class="form-label fw-bold">訂單處理狀態</label>
                         <select id="edit_order_status" class="form-select">
-                            <option value="pending_payment">待付款 (Pending Payment)</option>
-                            <option value="paid">已付款 (Paid)</option>
-                            <option value="pending">待接單 (Pending)</option>
-                            <option value="accepted">已接單 (Accepted) / 製作中</option>
-                            <option value="preparing">製作中 (Preparing)</option>
-                            <option value="ready">待取餐 (Ready)</option>
-                            <option value="completed">已完成 / 已取餐 (Completed)</option>
-                            <option value="canceled">已取消 / 拒單 (Canceled)</option>
-                            <option value="refunded">已退款 (Refunded)</option>
+                            <option value="pending_payment">待付款</option>
+                            <option value="paid">已付款</option>
+                            <option value="pending">待接單</option>
+                            <option value="accepted">已接單/製作中</option>
+                            <option value="preparing">製作中</option>
+                            <option value="ready">待取餐</option>
+                            <option value="completed">已完成 / 取餐</option>
+                            <option value="canceled">已作廢 / 拒單</option>
+                            <option value="refunded">退款中 / 已退款</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">顧客結帳付款狀態</label>
+                    <div class="mb-3"><label class="form-label fw-bold">顧客付款狀態</label>
                         <select id="edit_payment_status" class="form-select">
-                            <option value="pending">尚未付款 / 貨到付款 (Pending)</option>
-                            <option value="paid">✅ 已經付款 (Paid)</option>
-                            <option value="refunded">退款完成 (Refunded)</option>
+                            <option value="pending">未付款</option>
+                            <option value="paid">已付款</option>
+                            <option value="refunded">已退款</option>
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted">退款狀態紀錄 (選填，內部備查)</label>
-                        <input type="text" id="edit_refund_status" class="form-control"
-                            placeholder="例如: 綠界刷退完成手續費自付...">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted">顧客備註 / 變更</label>
-                        <textarea id="edit_customer_note" class="form-control" rows="2"
-                            placeholder="備註或改單文字..."></textarea>
-                    </div>
+                    <div class="mb-3"><label class="form-label text-muted">退款狀態紀錄</label><input type="text"
+                            id="edit_refund_status" class="form-control"></div>
+                    <div class="mb-3"><label class="form-label text-muted">客製備註</label><textarea id="edit_customer_note"
+                            class="form-control"></textarea></div>
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <button type="button" class="btn btn-outline-danger"
-                        onclick="document.getElementById('edit_order_status').value='canceled'">快速作廢訂單</button>
-                    <div>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                        <button type="button" class="btn btn-primary fw-bold" onclick="saveOrderEdit()"
-                            id="btnSaveOrderEdit">儲存修改</button>
-                    </div>
+                        onclick="document.getElementById('edit_order_status').value='canceled'">快速作廢</button>
+                    <div><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button
+                            type="button" class="btn btn-primary" onclick="saveOrderEdit()"
+                            id="btnSaveOrderEdit">儲存</button></div>
                 </div>
             </div>
         </div>
     </div>
 
-
-    <!-- Category Modal -->
     <div class="modal fade" id="catModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                ...
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold">編輯分類</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title fw-bold">編輯分類</h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="cat_id">
-                    <div class="mb-3">
-                        <label class="form-label">分類名稱</label>
-                        <input type="text" id="cat_name" class="form-control" placeholder="例如：純茶類" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">排序權重 (越小越前面)</label>
-                        <input type="number" id="cat_sort" class="form-control" value="0">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">狀態</label>
-                        <select id="cat_active" class="form-select">
-                            <option value="true">顯示上架</option>
-                            <option value="false">隱藏下架</option>
-                        </select>
-                    </div>
+                    <div class="mb-3"><label>分類名稱</label><input type="text" id="cat_name" class="form-control"></div>
+                    <div class="mb-3"><label>排序權重</label><input type="number" id="cat_sort" class="form-control"
+                            value="0"></div>
+                    <div class="mb-3"><label>狀態</label><select id="cat_active" class="form-select">
+                            <option value="true">顯示</option>
+                            <option value="false">隱藏</option>
+                        </select></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="saveCategory()" id="btnSaveCat">儲存變更</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary"
+                        onclick="saveCategory()" id="btnSaveCat">儲存</button></div>
             </div>
         </div>
     </div>
 
-    <!-- Product Modal -->
     <div class="modal fade" id="prodModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                ...
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold">編輯商品</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title fw-bold">編輯商品</h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="prod_id">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">商品名稱</label>
-                            <input type="text" id="prod_name" class="form-control" required>
+                        <div class="col-6 mb-3"><label>名稱</label><input type="text" id="prod_name" class="form-control">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">所屬分類</label>
-                            <select id="prod_cat" class="form-select"></select>
+                        <div class="col-6 mb-3"><label>分類</label><select id="prod_cat" class="form-select"></select>
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">價格</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" id="prod_price" class="form-control" value="0">
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">商品圖片位址 (URL)</label>
-                            <input type="text" id="prod_img" class="form-control" placeholder="https://...">
-                        </div>
+                        <div class="col-6 mb-3"><label>價格</label><input type="number" id="prod_price"
+                                class="form-control" value="0"></div>
+                        <div class="col-6 mb-3"><label>圖片(URL)</label><input type="text" id="prod_img"
+                                class="form-control"></div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">商品文字描述</label>
-                        <textarea id="prod_desc" class="form-control" rows="2"></textarea>
-                    </div>
-                    <div class="row">
-                        <div class="col-6">
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" id="prod_active">
-                                <label class="form-check-label fw-bold" for="prod_active">商品上架</label>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" id="prod_soldout">
-                                <label class="form-check-label fw-bold text-danger" for="prod_soldout">缺貨中</label>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="mb-3"><label>描述</label><textarea id="prod_desc" class="form-control"></textarea></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                            id="prod_active"><label class="form-check-label">商品上架</label></div>
+                    <div class="form-check form-switch mt-2"><input class="form-check-input" type="checkbox"
+                            id="prod_soldout"><label class="form-check-label text-danger">缺貨中</label></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="saveProduct()" id="btnSaveProd">儲存商品</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary"
+                        onclick="saveProduct()" id="btnSaveProd">儲存</button></div>
             </div>
         </div>
     </div>
 
-    <!-- Pickup Slot Modal -->
     <div class="modal fade" id="slotModal" tabindex="-1">
         <div class="modal-dialog">
-            ...
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold">編輯時段與容量</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title fw-bold">編輯時段</h5><button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="slot_id">
-                    <div class="mb-3"><label>限定日期</label><input type="date" id="slot_date" class="form-control"></div>
-                    <div class="mb-3"><label>取餐時間區間</label><input type="text" id="slot_time" class="form-control"
-                            required></div>
+                    <div class="mb-3"><label>限定日期 (空白代表常態)</label><input type="date" id="slot_date"
+                            class="form-control"></div>
+                    <div class="mb-3"><label>取餐時間 (如 12:00-12:30)</label><input type="text" id="slot_time"
+                            class="form-control"></div>
                     <div class="mb-3"><label>上限量</label><input type="number" id="slot_max" class="form-control"
                             value="10"></div>
-                    <div class="mb-3">
-                        <label>開放狀態</label>
-                        <select id="slot_active" class="form-select">
+                    <div class="mb-3"><label>狀態</label><select id="slot_active" class="form-select">
                             <option value="true">開放</option>
                             <option value="false">關閉</option>
-                        </select>
-                    </div>
+                        </select></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="saveSlot()" id="btnSaveSlot">儲存</button>
-                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary"
+                        onclick="saveSlot()" id="btnSaveSlot">儲存</button></div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbzG5aSsxvduJRoww4ZZ9XNFpMEVRL93ThZNJXLQld3koAJCYqp5pecSuHARVxl13O0fSQ/exec";
-
         let currentTab = 'orders';
-        let ordersCache = [];
-        let historyCache = [];
-        let catalogCache = { categories: [], products: [] };
-        let slotsCache = [];
-
-        let catModalInstance = null;
-        let prodModalInstance = null;
-        let slotModalInstance = null;
-        let orderModalInstance = null;
+        let ordersCache = []; let historyCache = []; let catalogCache = { categories: [], products: [] }; let slotsCache = [];
+        let catModalInstance, prodModalInstance, slotModalInstance, orderModalInstance;
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchOrders();
-            setInterval(() => { if (currentTab === 'orders') fetchOrders() }, 30000);
-
+            fetchOrders(); setInterval(() => { if (currentTab === 'orders') fetchOrders() }, 30000);
             catModalInstance = new bootstrap.Modal(document.getElementById('catModal'));
             prodModalInstance = new bootstrap.Modal(document.getElementById('prodModal'));
             slotModalInstance = new bootstrap.Modal(document.getElementById('slotModal'));
@@ -553,300 +436,154 @@
         });
 
         function refreshData() {
-            if (currentTab === 'orders') fetchOrders();
-            else if (currentTab === 'history') fetchHistory();
-            else if (currentTab === 'menu') fetchCatalog();
-            else if (currentTab === 'slots') fetchSlots();
+            if (currentTab === 'orders') fetchOrders(); else if (currentTab === 'history') fetchHistory();
+            else if (currentTab === 'menu') fetchCatalog(); else if (currentTab === 'slots') fetchSlots();
         }
 
-        // ==================== 看板邏輯 ====================
-
+        // --- 看板邏輯 ---
         async function fetchOrders() {
             document.getElementById('lastUpdated').innerText = "最後更新: 更新中...";
             try {
-                let res = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'admin_data', payload: { type: 'active' } })
-                });
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_data', payload: { type: 'active' } }) });
                 let rs = await res.json();
                 if (rs.success) {
-                    ordersCache = rs.orders || [];
-                    renderKanban();
-                    const now = new Date();
-                    document.getElementById('lastUpdated').innerText = `最後更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-                } else throw new Error("抓取失敗：" + rs.message);
-            } catch (e) {
-                console.error(e);
-                document.getElementById('lastUpdated').innerText = "最後更新: 失敗! 請手動重整";
-            }
+                    ordersCache = rs.orders || []; renderKanban();
+                    const now = new Date(); document.getElementById('lastUpdated').innerText = `最後更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                } else throw new Error(rs.message);
+            } catch (e) { document.getElementById('lastUpdated').innerText = "最後更新: 抓取失敗"; }
         }
 
         function renderKanban() {
             const pending = ordersCache.filter(o => o.order_status === 'pending');
-            // includes old mapping 'accepted' and new mapping 'preparing'
             const accepted = ordersCache.filter(o => o.order_status === 'accepted' || o.order_status === 'preparing');
             const ready = ordersCache.filter(o => o.order_status === 'ready');
-
             document.getElementById('countPending').innerText = pending.length;
             document.getElementById('countAccepted').innerText = accepted.length;
             document.getElementById('countReady').innerText = ready.length;
-
-            document.getElementById('colPending').innerHTML = pending.map(o => createCardHtml(o, 'pending')).join('') || '<p class="text-center text-muted mt-3 small">目前沒有待接單</p>';
-            document.getElementById('colAccepted').innerHTML = accepted.map(o => createCardHtml(o, 'accepted')).join('') || '<p class="text-center text-muted mt-3 small">目前沒有製作中的餐點</p>';
-            document.getElementById('colReady').innerHTML = ready.map(o => createCardHtml(o, 'ready')).join('') || '<p class="text-center text-muted mt-3 small">目前無待取餐</p>';
+            document.getElementById('colPending').innerHTML = pending.map(o => createCardHtml(o, 'pending')).join('') || '<p class="text-center text-muted mt-3">目前沒有待接單</p>';
+            document.getElementById('colAccepted').innerHTML = accepted.map(o => createCardHtml(o, 'accepted')).join('') || '<p class="text-center text-muted mt-3">目前無製作中</p>';
+            document.getElementById('colReady').innerHTML = ready.map(o => createCardHtml(o, 'ready')).join('') || '<p class="text-center text-muted mt-3">目前無待取餐</p>';
         }
 
         function createCardHtml(o, type) {
-            const itemsHtml = o.items.map(i => `<div class="item-row"><span class="fw-bold">${i.product_name}</span><span>x ${i.qty}</span></div>`).join('');
+            const itemsHtml = (o.items || []).map(i => `<div class="item-row"><span class="fw-bold">${i.product_name}</span><span>x ${i.qty}</span></div>`).join('');
             const noteHtml = o.customer_note ? `<div class="note-box">📝 ${o.customer_note}</div>` : '';
-
             let actions = '';
-            if (type === 'pending') {
-                actions = `<button class="btn btn-sm btn-primary flex-grow-1 fw-bold" onclick="updateOrderStatus('${o.order_id}', 'accepted')">接單製作</button>`;
-            } else if (type === 'accepted') {
-                actions = `<button class="btn btn-sm btn-success flex-grow-1 fw-bold" onclick="updateOrderStatus('${o.order_id}', 'ready')">✅ 製作完成 (發通知)</button>`;
-            } else if (type === 'ready') {
-                actions = `<button class="btn btn-sm btn-outline-secondary flex-grow-1 fw-bold" onclick="updateOrderStatus('${o.order_id}', 'completed')">結單 (顧客取走)</button>`;
-            }
-
-            return `
-        <div class="order-card position-relative">
-          <button class="position-absolute top-0 end-0 btn btn-link text-muted p-2" onclick="openOrderEdit('${o.order_id}', 'kanban')"><small>⚙️ 改單</small></button>
-          
-          <div class="order-header w-75">
-            <span class="text-secondary fw-semibold">單號: ${o.order_no.substring(4)}</span>
-            <span class="time">取餐: ${o.pickup_time || '盡快'}</span>
-          </div>
-          <div class="mb-2 text-muted" style="font-size:0.8rem;">
-            顧客: ${o.customer?.display_name || '無'} (${o.customer?.phone || '無電話'})<br>
-            總額: <span class="fw-bold text-dark">$${o.total_amount}</span> | 款項: <span class="${o.payment_status === 'paid' ? 'text-success' : 'text-danger'}">${o.payment_status}</span>
-          </div>
-          <div class="items-list">${itemsHtml}</div>
-          ${noteHtml}
-          <div class="action-btns">${actions}</div>
-        </div>`;
+            if (type === 'pending') actions = `<button class="btn btn-sm btn-primary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'accepted')">接單</button>`;
+            else if (type === 'accepted') actions = `<button class="btn btn-sm btn-success flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'ready')">做好了</button>`;
+            else if (type === 'ready') actions = `<button class="btn btn-sm btn-outline-secondary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'completed')">結單</button>`;
+            return `<div class="order-card position-relative">
+              <button class="position-absolute top-0 end-0 btn btn-link p-2" onclick="openOrderEdit('${o.order_id}', 'kanban')"><small>⚙️</small></button>
+              <div class="order-header w-75"><span class="text-secondary">${o.order_no.substring(4)}</span> <span class="time">${o.pickup_time || ''}</span></div>
+              <div class="mb-2 text-muted" style="font-size:0.8rem;">
+                顧客: ${o.customer?.display_name || '無'} (${o.customer?.phone || '無電話'})<br>金額: <b>$${o.total_amount}</b> | ${o.payment_status}
+              </div>
+              <div class="items-list">${itemsHtml}</div>${noteHtml}
+              <div class="action-btns">${actions}</div>
+            </div>`;
         }
 
-        // ==================== 歷史訂單查詢與改單邏輯 ====================
-
+        // --- 歷史與修改 ---
         async function fetchHistory() {
             document.getElementById('historyListUI').innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">讀取中...</td></tr>';
             try {
-                let res = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'admin_data', payload: { type: 'all' } })
-                });
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_data', payload: { type: 'all' } }) });
                 let rs = await res.json();
-                if (rs.success) {
-                    historyCache = rs.orders || [];
-                    renderHistory();
-                } else alert("讀取失敗：" + rs.message);
-            } catch (e) { console.error(e); }
+                if (rs.success) { historyCache = rs.orders || []; renderHistory(); }
+            } catch (e) { alert("讀取失敗"); }
         }
 
         function filterHistory() { renderHistory(); }
-
         function renderHistory() {
             const term = (document.getElementById('orderSearchInput').value || '').toLowerCase();
-            const filtered = historyCache.filter(o => {
-                const searchStr = `${o.order_no} ${o.customer?.display_name || ''} ${o.customer?.phone || ''}`.toLowerCase();
-                return searchStr.includes(term);
-            });
-
-            const html = filtered.map(o => {
-                const itemStr = o.items.map(i => i.product_name).join(', ');
-                return `
-                <tr>
-                    <td class="fw-bold">${o.order_no}</td>
-                    <td>
-                        <div class="fw-bold text-danger">${o.pickup_date || ''} ${o.pickup_time || ''}</div>
-                    </td>
-                    <td>
-                        <div>${o.customer?.display_name || '訪客'}</div>
-                        <div class="small text-muted">${o.customer?.phone || ''}</div>
-                    </td>
-                    <td class="fw-bold text-success">$${o.total_amount}</td>
-                    <td><span class="badge bg-secondary">${o.status_text || o.order_status}</span></td>
-                    <td><span class="${o.payment_status === 'paid' ? 'text-success' : o.payment_status === 'refunded' ? 'text-danger' : 'text-warning'} fw-bold border rounded px-1">${o.payment_status}</span></td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick="openOrderEdit('${o.order_id}', 'history')">詳細 / 改單</button>
-                    </td>
-                </tr>`;
-            }).join('');
-            document.getElementById('historyListUI').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted p-4">無相關紀錄</td></tr>';
+            const filtered = historyCache.filter(o => (`${o.order_no} ${o.customer?.display_name || ''} ${o.customer?.phone || ''}`).toLowerCase().includes(term));
+            const html = filtered.map(o => `
+                <tr><td>${o.order_no}</td><td><b class="text-danger">${o.pickup_date || ''} ${o.pickup_time || ''}</b></td>
+                    <td><div>${o.customer?.display_name || ''}</div><div class="small text-muted">${o.customer?.phone || ''}</div></td>
+                    <td><b class="text-success">$${o.total_amount}</b></td>
+                    <td><span class="badge border bg-light text-dark">${o.status_text || o.order_status}</span></td>
+                    <td><span class="fw-bold">${o.payment_status}</span></td>
+                    <td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="openOrderEdit('${o.order_id}', 'history')">詳細 / 改單</button></td>
+                </tr>`).join('');
+            document.getElementById('historyListUI').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted p-4">查無資料</td></tr>';
         }
 
         function openOrderEdit(orderId, source) {
-            let o = source === 'history' ? historyCache.find(x => x.order_id === orderId) : ordersCache.find(x => x.order_id === orderId);
+            let o = (source === 'history' ? historyCache : ordersCache).find(x => x.order_id === orderId);
             if (!o) return;
-
             document.getElementById('edit_order_id').value = o.order_id;
-            document.getElementById('edit_order_status').value = o.order_status;
+            document.getElementById('edit_order_status').value = o.order_status || 'pending';
             document.getElementById('edit_payment_status').value = o.payment_status || 'pending';
             document.getElementById('edit_refund_status').value = o.refund_status || '';
             document.getElementById('edit_customer_note').value = o.customer_note || '';
 
-            const detailHtml = o.items.map(i => `<div class="d-flex justify-content-between"><span>${i.product_name} x <span class="fw-bold">${i.qty}</span></span> <span class="text-muted">$${i.item_total}</span></div>`).join('');
-
-            document.getElementById('edit_order_details').innerHTML = `
-                <div class="d-flex justify-content-between fw-bold mb-2 border-bottom pb-1">
-                    <span>單號: ${o.order_no}</span> <span>總額: $${o.total_amount}</span>
-                </div>
-                ${detailHtml}
-                <div class="mt-2 text-muted small">顧客：${o.customer?.display_name || o.line_user_id.substring(0, 6)} (${o.customer?.phone || '無'})</div>
-            `;
-
+            const dHtml = (o.items || []).map(i => `<div>${i.product_name} x <b>${i.qty}</b> <span class="text-muted float-end">$${i.item_total}</span></div>`).join('');
+            document.getElementById('edit_order_details').innerHTML = `<div class="mb-2 pb-1 border-bottom"><b>${o.order_no}</b> | $${o.total_amount}</div>${dHtml}`;
             orderModalInstance.show();
         }
 
         async function saveOrderEdit() {
-            const btn = document.getElementById('btnSaveOrderEdit');
-            btn.disabled = true; btn.innerText = '儲存中...';
-
+            const btn = document.getElementById('btnSaveOrderEdit'); btn.disabled = true; btn.innerText = '處理中...';
             const orderId = document.getElementById('edit_order_id').value;
             const newStatus = document.getElementById('edit_order_status').value;
-
             const payload = {
-                order_id: orderId,
-                status: newStatus,
+                order_id: orderId, status: newStatus,
                 payment_status: document.getElementById('edit_payment_status').value,
                 refund_status: document.getElementById('edit_refund_status').value,
                 customer_note: document.getElementById('edit_customer_note').value
             };
-
             try {
-                // Optimistic UI update in Kanban if open
-                if (currentTab === 'orders') {
-                    let target = ordersCache.find(o => o.order_id === orderId);
-                    if (target) {
-                        target.order_status = newStatus;
-                        target.payment_status = payload.payment_status;
-                        target.customer_note = payload.customer_note;
-                        renderKanban();
-                    }
-                }
-
-                let res = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'update_order', payload })
-                });
+                if (currentTab === 'orders') { let t = ordersCache.find(o => o.order_id === orderId); if (t) { t.order_status = newStatus; renderKanban(); } }
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_order', payload }) });
                 let rs = await res.json();
-                if (rs.success) {
-                    orderModalInstance.hide();
-                    if (currentTab === 'history') fetchHistory();
-                    if (currentTab === 'orders') fetchOrders();
-                } else alert("修改失敗: " + rs.message);
-            } catch (e) { alert("錯誤: " + e.message); }
-            finally { btn.disabled = false; btn.innerText = '儲存修改'; }
+                if (rs.success) { orderModalInstance.hide(); if (currentTab === 'history') fetchHistory(); if (currentTab === 'orders') fetchOrders(); }
+                else alert("失敗: " + rs.message);
+            } catch (e) { alert("錯誤: " + e.message); } finally { btn.disabled = false; btn.innerText = '儲存'; }
         }
 
         async function updateOrderStatus(orderId, newStatus) {
             if (newStatus === 'canceled' && !confirm("確定要取消這筆訂單嗎？這會發送通知給顧客！")) return;
             try {
-                let target = ordersCache.find(o => o.order_id === orderId);
-                if (target) { target.order_status = newStatus; renderKanban(); }
-                let res = await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ action: 'update_order', payload: { order_id: orderId, status: newStatus } })
-                });
-                let rs = await res.json();
-                if (!rs.success) throw new Error(rs.message);
-            } catch (e) { alert("狀態更新失敗：" + e.message); fetchOrders(); }
+                let target = ordersCache.find(o => o.order_id === orderId); if (target) { target.order_status = newStatus; renderKanban(); }
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_order', payload: { order_id: orderId, status: newStatus } }) });
+            } catch (e) { fetchOrders(); }
         }
 
-        // ==================== 以下為先前模組的邏輯 ====================
-
-        // --- 菜單 ---
+        // --- 菜單邏輯 ---
         async function fetchCatalog() {
             try {
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_catalog' }) });
                 let rs = await res.json();
-                if (rs.success) {
-                    catalogCache.categories = rs.categories || [];
-                    catalogCache.products = rs.products || [];
-                    renderCatalog();
-                }
-            } catch (e) { console.error(e); }
+                if (rs.success) { catalogCache.categories = rs.categories || []; catalogCache.products = rs.products || []; renderCatalog(); }
+            } catch (e) { }
         }
-
-        function renderCatalog() { ... } // (Skipped massive rewrite to save lines, keeping logic clean)
-
-        // Since I'm using write_to_file and don't want to omit logic, 
-        // I will let user keep their full catalog and slots methods by providing this fully.
-
         function renderCatalog() {
-            const categories = catalogCache.categories.filter(c => c.status !== 'deleted').sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-            const catHtml = categories.map(c => {
-                const isActive = String(c.is_active) === 'true' || c.is_active === 1 || c.is_active === true;
-                return `
-                <div class="list-group-item d-flex justify-content-between align-items-center ${isActive ? '' : 'bg-light text-muted'}">
-                    <div><span class="fw-semibold">${c.category_name}</span>${isActive ? '' : '<span class="badge bg-secondary ms-1">下架</span>'}</div>
-                    <div>
-                        <button class="btn btn-sm btn-link text-decoration-none" onclick="editCat('${c.category_id}')">編輯</button>
-                    </div>
-                </div>`}).join('');
-            document.getElementById('catListUI').innerHTML = catHtml || '';
-            document.getElementById('prod_cat').innerHTML = categories.map(c => `<option value="${c.category_id}">${c.category_name}</option>`).join('');
-
-            const products = catalogCache.products.filter(p => p.status !== 'deleted');
-            const prodHtml = products.map(p => {
-                const catName = (categories.find(c => c.category_id === p.category_id) || {}).category_name || '未分類';
-                const isActive = String(p.is_active) === 'true' || p.is_active === 1 || p.is_active === true;
-                const isSoldOut = String(p.is_sold_out) === 'true' || p.is_sold_out === 1 || p.is_sold_out === true;
-                return `
-                <tr class="${isActive ? '' : 'table-light text-muted'}">
-                    <td><img src="${p.image_url || 'https://via.placeholder.com/50'}" width="48" height="48" style="object-fit:cover; border-radius:8px" onerror="this.src='https://via.placeholder.com/50'"></td>
-                    <td><div class="fw-bold">${p.product_name}</div><div class="small ${isActive ? 'text-muted' : ''}">${p.description || ''}</div></td>
-                    <td><span class="badge bg-light text-dark border">${catName}</span></td>
-                    <td class="fw-bold text-success">$${p.price}</td>
-                    <td>${isActive ? '<span class="badge bg-primary">上架</span>' : '<span class="badge bg-secondary">下架</span>'} ${isSoldOut ? '<span class="badge bg-danger">缺貨</span>' : ''}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick="editProd('${p.product_id}')">編輯</button>
-                    </td>
-                </tr>`}).join('');
-            document.getElementById('prodListUI').innerHTML = prodHtml || '';
+            const cats = catalogCache.categories.filter(c => c.status !== 'deleted').sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+            document.getElementById('catListUI').innerHTML = cats.map(c => `<div class="list-group-item d-flex justify-content-between align-items-center"><span>${c.category_name}</span><button class="btn btn-sm btn-link" onclick="editCat('${c.category_id}')">編輯</button></div>`).join('');
+            document.getElementById('prod_cat').innerHTML = cats.map(c => `<option value="${c.category_id}">${c.category_name}</option>`).join('');
+            const prods = catalogCache.products.filter(p => p.status !== 'deleted');
+            document.getElementById('prodListUI').innerHTML = prods.map(p => `<tr><td><img src="${p.image_url || ''}" width="48" style="border-radius:8px"></td><td><b>${p.product_name}</b></td><td>分類</td><td>$${p.price}</td><td></td><td><button class="btn btn-sm btn-outline-primary" onclick="editProd('${p.product_id}')">編輯</button> <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('product','${p.product_id}')">刪除</button></td></tr>`).join('');
         }
-
         function openCatModal() { catModalInstance.show(); }
-        function editCat(id) { catModalInstance.show(); }
-        function saveCategory() { catModalInstance.hide(); fetchCatalog(); }
+        function editCat(id) { const c = catalogCache.categories.find(x => x.category_id === id); if (c) { document.getElementById('cat_id').value = c.category_id; document.getElementById('cat_name').value = c.category_name; document.getElementById('cat_sort').value = c.sort_order; document.getElementById('cat_active').value = c.is_active; catModalInstance.show(); } }
+        async function saveCategory() { const pl = { category_id: document.getElementById('cat_id').value, category_name: document.getElementById('cat_name').value, sort_order: document.getElementById('cat_sort').value, is_active: document.getElementById('cat_active').value }; await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_save_category', payload: pl }) }); catModalInstance.hide(); fetchCatalog(); }
 
         function openProdModal() { prodModalInstance.show(); }
-        function editProd(id) { prodModalInstance.show(); }
-        function saveProduct() { prodModalInstance.hide(); fetchCatalog(); }
+        function editProd(id) { const p = catalogCache.products.find(x => x.product_id === id); if (p) { document.getElementById('prod_id').value = p.product_id; document.getElementById('prod_name').value = p.product_name; document.getElementById('prod_price').value = p.price; document.getElementById('prod_img').value = p.image_url; prodModalInstance.show(); } }
+        async function saveProduct() { const pl = { product_id: document.getElementById('prod_id').value, category_id: document.getElementById('prod_cat').value, product_name: document.getElementById('prod_name').value, price: document.getElementById('prod_price').value, image_url: document.getElementById('prod_img').value, is_active: document.getElementById('prod_active').checked }; await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_save_product', payload: pl }) }); prodModalInstance.hide(); fetchCatalog(); }
+        async function deleteItem(type, id) { if (confirm("刪除嗎?")) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_delete_catalog_item', payload: { type, id } }) }); fetchCatalog(); } }
 
-        // --- 時段 ---
+        // --- 時段邏輯 ---
         async function fetchSlots() {
-            try {
-                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_slots' }) });
-                let rs = await res.json();
-                if (rs.success) {
-                    slotsCache = rs.slots || [];
-                    renderSlots();
-                }
-            } catch (e) {
-                console.error(e);
-            }
+            try { let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_get_slots' }) }); let rs = await res.json(); if (rs.success) { slotsCache = rs.slots || []; renderSlots(); } } catch (e) { }
         }
-
         function renderSlots() {
             const slots = slotsCache.filter(s => s.status !== 'deleted');
-            slots.sort((a, b) => (a.pickup_date || 'ZZZ').localeCompare(b.pickup_date || 'ZZZ'));
-            const html = slots.map(s => `
-                <tr>
-                    <td>${s.pickup_date || '常態每天'}</td>
-                    <td class="fw-bold">${s.pickup_time}</td>
-                    <td>${s.max_orders}</td>
-                    <td>${s.current_orders || 0}</td>
-                    <td>${s.is_available ? '✅' : '🚫'}</td>
-                    <td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editSlot('${s.slot_id}')">編輯</button></td>
-                </tr>`).join('');
-            document.getElementById('slotsListUI').innerHTML = html;
+            document.getElementById('slotsListUI').innerHTML = slots.map(s => `<tr><td>${s.pickup_date || '常態'}</td><td><b>${s.pickup_time}</b></td><td>${s.max_orders}</td><td>${s.current_orders || 0}</td><td>${s.is_available ? '✅' : '🚫'}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editSlot('${s.slot_id}')">編輯</button></td></tr>`).join('');
         }
-
         function openSlotModal() { slotModalInstance.show(); }
-        function editSlot(id) { slotModalInstance.show(); }
-        function saveSlot() { slotModalInstance.hide(); fetchSlots(); }
+        function editSlot(id) { const s = slotsCache.find(x => x.slot_id === id); if (s) { document.getElementById('slot_id').value = s.slot_id; document.getElementById('slot_date').value = s.pickup_date; document.getElementById('slot_time').value = s.pickup_time; document.getElementById('slot_max').value = s.max_orders; slotModalInstance.show(); } }
+        async function saveSlot() { const pl = { slot_id: document.getElementById('slot_id').value, pickup_date: document.getElementById('slot_date').value, pickup_time: document.getElementById('slot_time').value, max_orders: document.getElementById('slot_max').value }; await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_save_slot', payload: pl }) }); slotModalInstance.hide(); fetchSlots(); }
 
     </script>
 </body>
