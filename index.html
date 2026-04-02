@@ -209,6 +209,13 @@
             <input type="text" class="form-control" id="orderNote" placeholder="有什麼特殊需求嗎？">
           </div>
 
+          <!-- Coupon -->
+          <div class="w-100 mb-4">
+            <label class="form-label fw-bold text-danger">促銷折價券代碼 (選填)</label>
+            <input type="text" class="form-control border-danger" id="couponCode" placeholder="輸入 VIP 優惠碼"
+              style="text-transform: uppercase;">
+          </div>
+
           <!-- Payment Method -->
           <div class="w-100 mb-4">
             <label class="form-label fw-bold">選擇付款方式</label>
@@ -667,6 +674,7 @@
       }
 
       const payMethod = document.querySelector('input[name="payment_method"]:checked').value;
+      const couponCode = document.getElementById('couponCode').value.trim();
 
       // Call API
       const payload = {
@@ -676,7 +684,8 @@
           items: state.cart,
           pickup_slot_id: slotId,
           customer_note: note,
-          payment_method: payMethod
+          payment_method: payMethod,
+          coupon_code: couponCode
         }
       };
 

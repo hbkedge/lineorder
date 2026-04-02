@@ -325,17 +325,23 @@
                     <div class="col-md-6 mb-4">
                         <div class="card shadow-sm border-0">
                             <div class="card-header bg-white">
-                                <h5 class="mb-0 fw-bold">系統管理說明</h5>
+                                <h5 class="mb-0 fw-bold">📢 會員推播與行銷</h5>
                             </div>
                             <div class="card-body">
-                                <div class="alert alert-warning">
-                                    <h6 class="fw-bold">角色權限 (開發中...)</h6>
-                                    <p class="mb-0 small">目前預設所有擁有本連結的人皆為「老闆(最高權限)」。若需實作員工帳號登入系統，需進一步加裝身分驗證層。</p>
+                                <div class="mb-3">
+                                    <label class="fw-bold text-success">發送 LINE 廣播訊息給所有會員</label>
+                                    <textarea id="broadcastMsg" class="form-control mt-2" rows="4"
+                                        placeholder="例如：【週末狂歡滿額贈】您好！本週末只要結帳輸入優惠碼『WEEKEND』即可享有百元折扣！"></textarea>
                                 </div>
-                                <hr>
-                                <div class="alert alert-success mt-3">
-                                    <h6 class="fw-bold">促銷與折價券 (發放準備中)</h6>
-                                    <p class="mb-0 small">試算表中已預留 coupons 資料夾，供未來串接結帳抵扣使用。</p>
+                                <button class="btn btn-success w-100 fw-bold" id="btnBroadcast"
+                                    onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> 立即發送推播</button>
+
+                                <hr class="mt-4">
+                                <div class="alert alert-info">
+                                    <h6 class="fw-bold">📊 會員點數與折扣券說明</h6>
+                                    <p class="mb-0 small">系統已預設「消費滿百送1點」，並自動於訂單完成後引導顧客填寫 Google 評價。您亦可隨時至
+                                        <code>coupons</code> 資料夾新增折扣碼供客人於結帳時輸入抵用。
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -539,6 +545,20 @@
                     alert("錯誤：" + rs.message);
                 }
             } catch (e) { alert("連線錯誤：" + e.message); } finally { btn.disabled = false; btn.innerText = '儲存門市設定'; }
+        }
+
+        async function sendBroadcast() {
+            const msg = document.getElementById('broadcastMsg').value.trim();
+            if (!msg) return alert("請輸入想要推播的訊息內容");
+            if (!confirm("確定要向『所有擁有有效 LINE 帳號的會員』發送這則推播嗎？\n此動作無法還原！")) return;
+
+            const btn = document.getElementById('btnBroadcast'); btn.disabled = true; btn.innerText = '發送中...';
+            try {
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_broadcast', payload: { message: msg } }) });
+                let rs = await res.json();
+                if (rs.success) { alert(rs.message); document.getElementById('broadcastMsg').value = ''; }
+                else alert("發送失敗: " + rs.message);
+            } catch (e) { alert("連線錯誤: " + e.message); } finally { btn.disabled = false; btn.innerText = '立即發送推播'; }
         }
 
         // --- 看板邏輯 ---
