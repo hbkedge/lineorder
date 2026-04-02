@@ -471,10 +471,10 @@
             let actions = '';
             if (type === 'pending') actions = `<button class="btn btn-sm btn-primary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'accepted')">接單</button>`;
             else if (type === 'accepted') actions = `<button class="btn btn-sm btn-success flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'ready')">做好了</button>`;
-            else if (type === 'ready') actions = `<button class="btn btn-sm btn-outline-secondary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'completed')">結單</button>`;
+            else if (type === 'ready') actions = `<button class="btn btn-sm btn-warning flex-grow-1" onclick="callNumber('${o.order_id}')">🔔 叫號 / 過號提醒</button><button class="btn btn-sm btn-outline-secondary flex-grow-1" onclick="updateOrderStatus('${o.order_id}', 'completed')">結單 (顧客取走)</button>`;
             return `<div class="order-card position-relative">
-              <button class="position-absolute top-0 end-0 btn btn-link p-2" onclick="openOrderEdit('${o.order_id}', 'kanban')"><small>⚙️</small></button>
-              <div class="order-header w-75"><span class="text-secondary">${o.order_no.substring(4)}</span> <span class="time">${o.pickup_time || ''}</span></div>
+              <button class="position-absolute top-0 end-0 btn btn-link p-2 text-muted" onclick="openOrderEdit('${o.order_id}', 'kanban')"><small>⚙️ 改單</small></button>
+              <div class="order-header w-75"><span class="text-secondary fw-bold" style="font-size:1.1rem;">#${o.order_no.substring(o.order_no.length - 4)}</span> <span class="time">${o.pickup_time || ''}</span></div>
               <div class="mb-2 text-muted" style="font-size:0.8rem;">
                 顧客: ${o.customer?.display_name || '無'} (${o.customer?.phone || '無電話'})<br>金額: <b>$${o.total_amount}</b> | ${o.payment_status}
               </div>
@@ -547,6 +547,15 @@
                 let target = ordersCache.find(o => o.order_id === orderId); if (target) { target.order_status = newStatus; renderKanban(); }
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_order', payload: { order_id: orderId, status: newStatus } }) });
             } catch (e) { fetchOrders(); }
+        }
+
+        async function callNumber(orderId) {
+            try {
+                let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'notify_reminder', payload: { order_id: orderId } }) });
+                let rs = await res.json();
+                if (rs.success) alert("🔔 已傳送催取叫號提醒通知至顧客的 LINE。");
+                else throw new Error(rs.message);
+            } catch (e) { alert("通知傳送失敗: " + e.message); }
         }
 
         // --- 菜單邏輯 ---
