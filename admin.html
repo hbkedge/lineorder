@@ -610,7 +610,7 @@
 
         function openStaffModal(id = null) {
             if (id) {
-                let s = staffCache.find(x => x.staff_id === id);
+                let s = staffCache.find(x => String(x.staff_id) === String(id));
                 document.getElementById('staff_id').value = s.staff_id;
                 document.getElementById('staff_name').value = s.staff_name || '';
                 document.getElementById('staff_line_id').value = s.login_account || '';
@@ -799,7 +799,7 @@
                 customer_note: document.getElementById('edit_customer_note').value
             };
             try {
-                if (currentTab === 'orders') { let t = ordersCache.find(o => o.order_id === orderId); if (t) { t.order_status = newStatus; renderKanban(); } }
+                if (currentTab === 'orders') { let t = ordersCache.find(o => String(o.order_id) === String(orderId)); if (t) { t.order_status = newStatus; renderKanban(); } }
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_order', payload }) });
                 let rs = await res.json();
                 if (rs.success) { orderModalInstance.hide(); if (currentTab === 'history') fetchHistory(); if (currentTab === 'orders') fetchOrders(); }
@@ -810,7 +810,7 @@
         async function updateOrderStatus(orderId, newStatus) {
             if (newStatus === 'canceled' && !confirm("確定要取消這筆訂單嗎？這會發送通知給顧客！")) return;
             try {
-                let target = ordersCache.find(o => o.order_id === orderId); if (target) { target.order_status = newStatus; renderKanban(); }
+                let target = ordersCache.find(o => String(o.order_id) === String(orderId)); if (target) { target.order_status = newStatus; renderKanban(); }
                 let res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'update_order', payload: { order_id: orderId, status: newStatus } }) });
             } catch (e) { fetchOrders(); }
         }
@@ -840,11 +840,11 @@
             document.getElementById('prodListUI').innerHTML = prods.map(p => `<tr><td><img src="${p.image_url || ''}" width="48" style="border-radius:8px"></td><td><b>${p.product_name}</b></td><td>分類</td><td>$${p.price}</td><td></td><td><button class="btn btn-sm btn-outline-primary" onclick="editProd('${p.product_id}')">編輯</button> <button class="btn btn-sm btn-outline-danger" onclick="deleteItem('product','${p.product_id}')">刪除</button></td></tr>`).join('');
         }
         function openCatModal() { catModalInstance.show(); }
-        function editCat(id) { const c = catalogCache.categories.find(x => x.category_id === id); if (c) { document.getElementById('cat_id').value = c.category_id; document.getElementById('cat_name').value = c.category_name; document.getElementById('cat_sort').value = c.sort_order; document.getElementById('cat_active').value = c.is_active; catModalInstance.show(); } }
+        function editCat(id) { const c = catalogCache.categories.find(x => String(x.category_id) === String(id)); if (c) { document.getElementById('cat_id').value = c.category_id; document.getElementById('cat_name').value = c.category_name; document.getElementById('cat_sort').value = c.sort_order; document.getElementById('cat_active').value = c.is_active; catModalInstance.show(); } }
         async function saveCategory() { const pl = { category_id: document.getElementById('cat_id').value, category_name: document.getElementById('cat_name').value, sort_order: document.getElementById('cat_sort').value, is_active: document.getElementById('cat_active').value }; await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_save_category', payload: pl }) }); catModalInstance.hide(); fetchCatalog(); }
 
         function openProdModal() { prodModalInstance.show(); }
-        function editProd(id) { const p = catalogCache.products.find(x => x.product_id === id); if (p) { document.getElementById('prod_id').value = p.product_id; document.getElementById('prod_name').value = p.product_name; document.getElementById('prod_price').value = p.price; document.getElementById('prod_img').value = p.image_url; prodModalInstance.show(); } }
+        function editProd(id) { const p = catalogCache.products.find(x => String(x.product_id) === String(id)); if (p) { document.getElementById('prod_id').value = p.product_id; document.getElementById('prod_name').value = p.product_name; document.getElementById('prod_price').value = p.price; document.getElementById('prod_img').value = p.image_url; prodModalInstance.show(); } }
         async function saveProduct() { const pl = { product_id: document.getElementById('prod_id').value, category_id: document.getElementById('prod_cat').value, product_name: document.getElementById('prod_name').value, price: document.getElementById('prod_price').value, image_url: document.getElementById('prod_img').value, is_active: document.getElementById('prod_active').checked }; await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_save_product', payload: pl }) }); prodModalInstance.hide(); fetchCatalog(); }
         async function deleteItem(type, id) { if (confirm("刪除嗎?")) { await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_delete_catalog_item', payload: { type, id } }) }); fetchCatalog(); } }
 
@@ -857,7 +857,7 @@
             document.getElementById('slotsListUI').innerHTML = slots.map(s => `<tr><td>${s.pickup_date || '常態'}</td><td><b>${s.pickup_time}</b></td><td>${s.max_orders}</td><td>${s.current_orders || 0}</td><td>${s.is_available ? '✅' : '🚫'}</td><td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="editSlot('${s.slot_id}')">編輯</button></td></tr>`).join('');
         }
         function openSlotModal() { slotModalInstance.show(); }
-        function editSlot(id) { const s = slotsCache.find(x => x.slot_id === id); if (s) { document.getElementById('slot_id').value = s.slot_id; document.getElementById('slot_date').value = s.pickup_date; document.getElementById('slot_time').value = s.pickup_time; document.getElementById('slot_max').value = s.max_orders; slotModalInstance.show(); } }
+        function editSlot(id) { const s = slotsCache.find(x => String(x.slot_id) === String(id)); if (s) { document.getElementById('slot_id').value = s.slot_id; document.getElementById('slot_date').value = s.pickup_date; document.getElementById('slot_time').value = s.pickup_time; document.getElementById('slot_max').value = s.max_orders; slotModalInstance.show(); } }
         async function saveSlot() { const pl = { slot_id: document.getElementById('slot_id').value, pickup_date: document.getElementById('slot_date').value, pickup_time: document.getElementById('slot_time').value, max_orders: document.getElementById('slot_max').value }; await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'admin_save_slot', payload: pl }) }); slotModalInstance.hide(); fetchSlots(); }
 
     </script>
